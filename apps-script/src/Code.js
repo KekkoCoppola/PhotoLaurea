@@ -95,3 +95,10 @@ function apiError_(code) {
 function reply_(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
 }
+
+// Run once from the editor (Esegui → autorizza) to grant Drive + UrlFetch permissions to the web app.
+function autorizza() {
+  DriveApp.getRootFolder();
+  UrlFetchApp.fetch('https://www.googleapis.com/discovery/v1/apis/drive/v3/rest', { muteHttpExceptions: true });
+  console.log('Permessi OK. ROOT_FOLDER_ID impostato: ' + Boolean(prop_('ROOT_FOLDER_ID')));
+}
