@@ -50,10 +50,20 @@ describe('uploadResumable', () => {
     expect(f.calls[1].range).toBe('bytes */600000')
   })
 
-  test('308 senza Range riparte da 0', async () => {
-    const f = fakeFetch([r308(), r308('bytes=0-262143'), r308('bytes=0-524287'), r200('abc')])
+  test('308 senza Range leggibile (CORS) avanza al pezzo successivo', async () => {
+    const f = fakeFetch([r308(), r308(), r200('abc')])
+    const res = await uploadResumable(URL_, blob(600000), { chunkSize: CHUNK, fetchImpl: f.impl, sleep: noSleep })
+    expect(res.id).toBe('abc')
+    expect(f.calls.map(c => c.range)).toEqual([
+      'bytes 0-262143/600000', 'bytes 262144-524287/600000', 'bytes 524288-599999/600000',
+    ])
+  })
+
+  test("dopo un errore, stato senza Range riparte dall'ultimo offset confermato", async () => {
+    const f = fakeFetch([r308(), netErr, r308(), r308(), r200('abc')])
     await uploadResumable(URL_, blob(600000), { chunkSize: CHUNK, fetchImpl: f.impl, sleep: noSleep })
-    expect(f.calls[1].range).toBe('bytes 0-262143/600000')
+    expect(f.calls[2].range).toBe('bytes */600000')
+    expect(f.calls[3].range).toBe('bytes 262144-524287/600000')
   })
 
   test('si arrende dopo maxRetries errori consecutivi', async () => {
