@@ -74,6 +74,39 @@ describe('uploadResumable', () => {
     expect(f.calls.length).toBe(4)
   })
 
+  test('pezzo che fallisce sempre mentre lo stato risponde 308 -> FAILED, niente loop', async () => {
+    const steps: Step[] = []
+    for (let i = 0; i < 40; i++) steps.push(() => new Response(null, { status: 503 }), r308())
+    const f = fakeFetch(steps)
+    await expect(uploadResumable(URL_, blob(600000), { chunkSize: CHUNK, fetchImpl: f.impl, sleep: noSleep, maxRetries: 4 }))
+      .rejects.toMatchObject({ code: 'FAILED' })
+    expect(f.calls.length).toBeLessThan(40)
+  })
+
+  test('file vuoto con risposta 308 -> FAILED, niente loop', async () => {
+    const f = fakeFetch(Array(40).fill(r308()))
+    await expect(uploadResumable(URL_, blob(0), { chunkSize: CHUNK, fetchImpl: f.impl, sleep: noSleep, maxRetries: 3 }))
+      .rejects.toMatchObject({ code: 'FAILED' })
+    expect(f.calls.length).toBeLessThan(10)
+  })
+
+  test('ultimo pezzo con 308 senza Range -> chiede lo stato, non manda un pezzo vuoto', async () => {
+    const f = fakeFetch([r308(), r308(), r308(), r200('x')])
+    const res = await uploadResumable(URL_, blob(600000), { chunkSize: CHUNK, fetchImpl: f.impl, sleep: noSleep })
+    expect(res.id).toBe('x')
+    expect(f.calls[3]).toEqual({ range: 'bytes */600000', bodySize: 0 })
+  })
+
+  test('richiesta bloccata viene interrotta dopo timeoutMs e ritentata', async () => {
+    const hang: Step = init => new Promise((_, reject) => {
+      init.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')))
+    })
+    const f = fakeFetch([hang, r308(), r200('ok')])
+    const res = await uploadResumable(URL_, blob(100), { chunkSize: CHUNK, fetchImpl: f.impl, sleep: noSleep, timeoutMs: 5 })
+    expect(res.id).toBe('ok')
+    expect(f.calls[1].range).toBe('bytes */100')
+  })
+
   test('404 -> SESSION_EXPIRED', async () => {
     const f = fakeFetch([() => new Response(null, { status: 404 })])
     await expect(uploadResumable(URL_, blob(600000), { chunkSize: CHUNK, fetchImpl: f.impl, sleep: noSleep }))

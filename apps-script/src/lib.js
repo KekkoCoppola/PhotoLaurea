@@ -5,7 +5,7 @@ var NAME_MAX_LENGTH = 40;
 function normalizeName(raw) {
   return String(raw == null ? '' : raw)
     .replace(/[\u0000-\u001f\u007f]/g, '')
-    .replace(/[\/\:*?"<>|]/g, '')
+    .replace(/[\/\\:*?"<>|]/g, '')
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, NAME_MAX_LENGTH)

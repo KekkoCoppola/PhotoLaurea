@@ -2,7 +2,7 @@ import { expect, test } from 'vitest'
 import { codeFromHash } from './eventCode'
 
 test('codeFromHash legge il codice dopo #', () => {
-  expect(codeFromHash('#LAUREAKEKKO')).toBe('LAUREAKEKKO')
+  expect(codeFromHash('#ABC123')).toBe('ABC123')
 })
 
 test('codeFromHash decodifica e toglie spazi', () => {

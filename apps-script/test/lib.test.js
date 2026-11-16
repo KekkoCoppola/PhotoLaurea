@@ -10,7 +10,8 @@ const { normalizeName, nameKey, buildDriveFileName, isValidCode } = ctx
 
 test('normalizeName pulisce', () => {
   expect(normalizeName('  Paolo   Rossi ')).toBe('Paolo Rossi')
-  expect(normalizeName('a/b\c:d')).toBe('abcd')
+  expect(normalizeName('a/b\\c:d')).toBe('abcd')
+  expect(normalizeName('A\\B')).toBe('AB')
   expect(normalizeName('   / ')).toBe('')
   expect(normalizeName('x'.repeat(60))).toHaveLength(40)
 })
