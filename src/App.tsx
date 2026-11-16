@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { ApiError, callApi } from './api/client'
 import { thumbnailUrl, videoPreviewUrl } from './drive/urls'
 import { UploadError, uploadResumable } from './upload/resumable'
+import { initialCode, rememberCode } from './session/eventCode'
 
 type Session = { code: string; name: string }
 type Item = {
@@ -18,7 +19,8 @@ const errorText = (e: unknown) =>
   e instanceof ApiError || e instanceof UploadError ? e.code : e instanceof Error ? e.message : String(e)
 
 export default function App() {
-  const [code, setCode] = useState('')
+  const [code, setCode] = useState(initialCode)
+  const [showCode, setShowCode] = useState(() => !initialCode())
   const [name, setName] = useState('')
   const [session, setSession] = useState<Session | null>(null)
   const [loginError, setLoginError] = useState('')
@@ -40,9 +42,12 @@ export default function App() {
     setLoginError('')
     try {
       const data = await callApi<{ name: string; folderId: string }>('login', { code, name })
+      rememberCode(code)
       setSession({ code, name: data.name })
     } catch (e) {
-      setLoginError(errorText(e))
+      const text = errorText(e)
+      if (text === 'BAD_CODE') setShowCode(true)
+      setLoginError(text)
     }
   }
 
@@ -74,7 +79,7 @@ export default function App() {
     return (
       <main>
         <h1>PhotoLaurea</h1>
-        <p><input placeholder="Codice evento" value={code} onChange={e => setCode(e.target.value)} /></p>
+        {showCode && <p><input placeholder="Codice evento" value={code} onChange={e => setCode(e.target.value)} /></p>}
         <p><input placeholder="Il tuo nome" value={name} onChange={e => setName(e.target.value)} /></p>
         <button onClick={login}>Entra</button>
         {loginError && <p>Errore: {loginError}</p>}
