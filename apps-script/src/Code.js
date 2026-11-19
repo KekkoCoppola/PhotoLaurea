@@ -48,7 +48,7 @@ var ACTIONS_ = {
         .join(' or ');
       files = files.concat(driveList_(
         '(' + parentsQ + ") and mimeType != 'application/vnd.google-apps.folder' and trashed = false",
-        'files(id,parents,createdTime,mimeType,appProperties)'
+        'files(id,parents,createdTime,mimeType,appProperties,description,imageMediaMetadata(width,height,rotation),videoMediaMetadata(width,height))'
       ));
     }
     var data = { users: summarizeUsers(folders, files, FEED_RECENT_) };
@@ -72,7 +72,7 @@ var ACTIONS_ = {
     if (folder) {
       data.items = albumItems(driveList_(
         "'" + folder.id + "' in parents and mimeType != 'application/vnd.google-apps.folder' and trashed = false",
-        'files(id,createdTime,mimeType,appProperties,imageMediaMetadata(width,height,rotation),videoMediaMetadata(width,height))'
+        'files(id,createdTime,mimeType,appProperties,description,imageMediaMetadata(width,height,rotation),videoMediaMetadata(width,height))'
       ));
     }
     try {
@@ -100,7 +100,7 @@ var ACTIONS_ = {
         },
         payload: JSON.stringify(Object.assign(
           { parents: [folder.getId()] },
-          uploadMeta(req.kind, String(req.fileName), new Date())
+          uploadMeta(req.kind, String(req.fileName), new Date(), { text: req.text, durationMs: req.durationMs })
         )),
       }
     );

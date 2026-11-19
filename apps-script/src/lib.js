@@ -36,11 +36,29 @@ function buildAvatarFileName(date) {
   return 'PROFILO_' + romeStamp(date) + '.jpg';
 }
 
-// Drive metadata for a new upload. The profile photo carries appProperties.photolaurea = 'avatar'
-// so the gallery can leave it out and the profile can find it.
-function uploadMeta(kind, original, date) {
+var TEXT_MAX_LENGTH = 1000;
+
+// Drive metadata for a new upload, tagged in appProperties.photolaurea:
+// 'avatar' = profile photo (left out of the gallery); 'text' = message, also kept in the
+// description so listings carry it; 'voice' = voice note with its duration (Drive has none for audio).
+function uploadMeta(kind, original, date, extra) {
+  extra = extra || {};
   if (kind === 'avatar') {
     return { name: buildAvatarFileName(date), appProperties: { photolaurea: 'avatar' } };
+  }
+  if (kind === 'text') {
+    return {
+      name: 'TESTO_' + romeStamp(date) + '.txt',
+      description: String(extra.text == null ? '' : extra.text).trim().slice(0, TEXT_MAX_LENGTH),
+      appProperties: { photolaurea: 'text' },
+    };
+  }
+  if (kind === 'voice') {
+    var ext = /\.([a-z0-9]{2,4})$/i.exec(original);
+    return {
+      name: 'VOCALE_' + romeStamp(date) + '.' + (ext ? ext[1].toLowerCase() : 'webm'),
+      appProperties: { photolaurea: 'voice', durationMs: String(Math.round(Number(extra.durationMs) || 0)) },
+    };
   }
   return { name: buildDriveFileName(original, date) };
 }
@@ -51,8 +69,46 @@ function isValidCode(given, expected) {
   return String(given == null ? '' : given).trim().toUpperCase() === e;
 }
 
+function tagOf(file) {
+  return (file.appProperties && file.appProperties.photolaurea) || '';
+}
+
 function isAvatarFile(file) {
-  return Boolean(file.appProperties && file.appProperties.photolaurea === 'avatar');
+  return tagOf(file) === 'avatar';
+}
+
+// photo | video | text | voice
+function itemKind(file) {
+  var tag = tagOf(file);
+  if (tag === 'text' || tag === 'voice') return tag;
+  return /^video\//.test(file.mimeType || '') ? 'video' : 'photo';
+}
+
+// Taller tiles for longer messages, so the start of the text shows in the grid.
+function textRatio(text) {
+  var n = String(text || '').length;
+  return n < 80 ? 0.8 : n < 200 ? 1.1 : 1.35;
+}
+
+// What the client needs to draw one gallery item (grid tile, stack card, focused view).
+// ratio = height / width as displayed (quarter-turn EXIF rotation swaps the sides).
+function toItem(f) {
+  var kind = itemKind(f);
+  var item = { id: f.id, mimeType: f.mimeType, kind: kind };
+  if (kind === 'text') {
+    item.ratio = textRatio(f.description);
+    item.text = f.description || '';
+  } else if (kind === 'voice') {
+    item.ratio = 1;
+    item.durationMs = Number((f.appProperties || {}).durationMs) || 0;
+  } else {
+    var meta = f.imageMediaMetadata || f.videoMediaMetadata || {};
+    var w = Number(meta.width);
+    var h = Number(meta.height);
+    if (meta.rotation % 2 === 1) { var t = w; w = h; h = t; }
+    item.ratio = w > 0 && h > 0 ? Math.round((h / w) * 10000) / 10000 : DEFAULT_RATIO;
+  }
+  return item;
 }
 
 // Profile photo of a guest folder: the newest photo marked as profile; if none, the first photo
@@ -95,7 +151,7 @@ function summarizeUsers(folders, files, recentLimit) {
         avatarId: pickAvatar(u.files),
         count: u.media.length,
         lastUpload: u.media[0].createdTime,
-        recent: u.media.slice(0, recentLimit).map(function (m) { return { id: m.id, mimeType: m.mimeType }; }),
+        recent: u.media.slice(0, recentLimit).map(toItem),
       };
     })
     .sort(function (a, b) { return a.lastUpload < b.lastUpload ? 1 : a.lastUpload > b.lastUpload ? -1 : 0; });
@@ -110,12 +166,5 @@ function albumItems(files) {
   return files
     .filter(function (f) { return !isAvatarFile(f); })
     .sort(function (a, b) { return a.createdTime < b.createdTime ? 1 : a.createdTime > b.createdTime ? -1 : 0; })
-    .map(function (f) {
-      var meta = f.imageMediaMetadata || f.videoMediaMetadata || {};
-      var w = Number(meta.width);
-      var h = Number(meta.height);
-      if (meta.rotation % 2 === 1) { var t = w; w = h; h = t; }
-      var ratio = w > 0 && h > 0 ? Math.round((h / w) * 10000) / 10000 : DEFAULT_RATIO;
-      return { id: f.id, mimeType: f.mimeType, ratio: ratio };
-    });
+    .map(toItem);
 }

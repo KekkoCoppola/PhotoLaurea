@@ -75,6 +75,7 @@ test('summarizeUsers: per ospite foto recenti, conteggio, ultimo caricamento, av
     f('x', 'altro', '2026-11-20T13:00:00Z'),
   ]
   const users = JSON.parse(JSON.stringify(summarizeUsers(folders, files, 4)))
+    .map(u => ({ ...u, recent: u.recent.map(r => r.id + ':' + r.kind) }))
   expect(users).toEqual([
     {
       name: 'Bruno',
@@ -82,10 +83,10 @@ test('summarizeUsers: per ospite foto recenti, conteggio, ultimo caricamento, av
       count: 5,
       lastUpload: '2026-11-20T12:04:00Z',
       recent: [
-        { id: 'b5', mimeType: 'image/jpeg' },
-        { id: 'b4', mimeType: 'image/jpeg' },
-        { id: 'b3', mimeType: 'image/jpeg' },
-        { id: 'b2', mimeType: 'image/jpeg' },
+        'b5:photo',
+        'b4:photo',
+        'b3:photo',
+        'b2:photo',
       ],
     },
     {
@@ -94,8 +95,8 @@ test('summarizeUsers: per ospite foto recenti, conteggio, ultimo caricamento, av
       count: 2,
       lastUpload: '2026-11-20T11:00:00Z',
       recent: [
-        { id: 'a2', mimeType: 'video/mp4' },
-        { id: 'a1', mimeType: 'image/jpeg' },
+        'a2:video',
+        'a1:photo',
       ],
     },
   ])
@@ -141,9 +142,36 @@ test('albumItems: niente avatar, più recenti prima, proporzioni dalle dimension
     { id: 'nometa', createdTime: '2026-11-20T09:00:00Z', mimeType: 'image/heic' },
   ]
   expect(JSON.parse(JSON.stringify(albumItems(files)))).toEqual([
-    { id: 'vid', mimeType: 'video/mp4', ratio: 1.7778 },
-    { id: 'rot', mimeType: 'image/jpeg', ratio: 1.3333 },
-    { id: 'old', mimeType: 'image/jpeg', ratio: 0.75 },
-    { id: 'nometa', mimeType: 'image/heic', ratio: 1.25 },
+    { id: 'vid', mimeType: 'video/mp4', kind: 'video', ratio: 1.7778 },
+    { id: 'rot', mimeType: 'image/jpeg', kind: 'photo', ratio: 1.3333 },
+    { id: 'old', mimeType: 'image/jpeg', kind: 'photo', ratio: 0.75 },
+    { id: 'nometa', mimeType: 'image/heic', kind: 'photo', ratio: 1.25 },
+  ])
+})
+
+test('uploadMeta: testo nella descrizione, nota vocale con durata', () => {
+  const when = new Date('2026-11-20T18:05:09Z')
+  const text = uploadMeta('text', 'x.txt', when, { text: '  Auguri dottore!  ' })
+  expect(text.name).toBe('TESTO_20261120-190509.txt')
+  expect(text.description).toBe('Auguri dottore!')
+  expect({ ...text.appProperties }).toEqual({ photolaurea: 'text' })
+  expect(uploadMeta('text', 'x.txt', when, { text: 'a'.repeat(3000) }).description).toHaveLength(1000)
+
+  const voice = uploadMeta('voice', 'nota.m4a', when, { durationMs: 42317.6 })
+  expect(voice.name).toBe('VOCALE_20261120-190509.m4a')
+  expect({ ...voice.appProperties }).toEqual({ photolaurea: 'voice', durationMs: '42318' })
+  expect(uploadMeta('voice', 'senza-estensione', when, {}).name).toBe('VOCALE_20261120-190509.webm')
+})
+
+test('albumItems: testi e note vocali', () => {
+  const files = [
+    { id: 't1', createdTime: '2026-11-20T12:00:00Z', mimeType: 'text/plain', description: 'Ciao!', appProperties: { photolaurea: 'text' } },
+    { id: 't2', createdTime: '2026-11-20T11:00:00Z', mimeType: 'text/plain', description: 'x'.repeat(300), appProperties: { photolaurea: 'text' } },
+    { id: 'v1', createdTime: '2026-11-20T10:00:00Z', mimeType: 'audio/mp4', appProperties: { photolaurea: 'voice', durationMs: '42318' } },
+  ]
+  expect(JSON.parse(JSON.stringify(albumItems(files)))).toEqual([
+    { id: 't1', mimeType: 'text/plain', kind: 'text', ratio: 0.8, text: 'Ciao!' },
+    { id: 't2', mimeType: 'text/plain', kind: 'text', ratio: 1.35, text: 'x'.repeat(300) },
+    { id: 'v1', mimeType: 'audio/mp4', kind: 'voice', ratio: 1, durationMs: 42318 },
   ])
 })
