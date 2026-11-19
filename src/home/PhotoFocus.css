@@ -8,9 +8,10 @@
 .focus__backdrop {
   position: absolute;
   inset: 0;
-  background: rgb(245 245 247 / 0.45);
-  backdrop-filter: blur(22px) saturate(1.15);
-  -webkit-backdrop-filter: blur(22px) saturate(1.15);
+  /* heavy blur + light veil: the photo pops and the plain-text actions stay readable */
+  background: rgb(245 245 247 / 0.72);
+  backdrop-filter: blur(40px) saturate(1.1);
+  -webkit-backdrop-filter: blur(40px) saturate(1.1);
   cursor: zoom-out;
 }
 

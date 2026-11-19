@@ -149,3 +149,63 @@
 @keyframes profile-spin {
   to { transform: rotate(360deg); }
 }
+
+/* ---------- site avatars (instead of a photo) ---------- */
+.profile-step__avatars {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+  width: min(100%, 330px);
+}
+
+.profile-step__avatar {
+  position: relative;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+  transition: transform 150ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.profile-step__avatar img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  box-shadow: 0 10px 22px -14px rgb(0 0 0 / 0.45);
+}
+
+.profile-step__avatar:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+/* selected: black ring around the drawing */
+.profile-step__avatar.is-selected {
+  box-shadow: 0 0 0 3px var(--bg), 0 0 0 6px var(--ink);
+}
+
+.profile-step__avatar:focus-visible {
+  outline: 3px solid rgb(29 29 31 / 0.35);
+  outline-offset: 4px;
+}
+
+/* "oppure scegli un avatar" / "oppure scatta una foto": small grey words under the button */
+.profile-step__small-link {
+  min-height: 40px;
+  padding: 0 12px;
+  border: 0;
+  background: none;
+  color: var(--ink-muted);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.profile-step__small-link:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

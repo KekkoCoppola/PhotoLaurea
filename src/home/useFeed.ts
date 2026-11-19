@@ -6,6 +6,7 @@ export type FeedItem = GalleryItem
 export type FeedUser = {
   name: string
   avatarId: string | null
+  avatarPreset?: string | null // one of the site avatars; wins over avatarId
   count: number
   lastUpload: string
   recent: FeedItem[]

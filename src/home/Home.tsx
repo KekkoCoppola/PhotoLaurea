@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import cap from '../assets/cap.png'
+import { avatarSrc } from '../avatars/avatars'
+import { callApi } from '../api/client'
 import { thumbnailUrl } from '../drive/urls'
 import type { Session } from '../session/session'
 import { sendFile } from '../upload/sendFile'
@@ -22,6 +24,8 @@ const LIFT = [6, -4, 4, -6]
 
 function Avatar({ user }: { user: FeedUser }) {
   const [broken, setBroken] = useState(false)
+  const preset = avatarSrc(user.avatarPreset)
+  if (preset) return <img className="home-avatar home-avatar--preset" src={preset} alt="" />
   if (!user.avatarId || broken) {
     return <span className="home-avatar home-avatar--empty" aria-hidden="true">{user.name.charAt(0).toUpperCase()}</span>
   }
@@ -100,8 +104,27 @@ function UserStack({ user, now, own, onOpen }: { user: FeedUser; now: Date; own:
   )
 }
 
-export default function Home({ session }: { session: Session }) {
+export default function Home({ session, onLogout }: { session: Session; onLogout: () => void }) {
   const feed = useFeed(session.code)
+
+  // If this guest's folder has been deleted on Drive, log out (on open and when coming back).
+  const logoutRef = useRef(onLogout)
+  useEffect(() => { logoutRef.current = onLogout }, [onLogout])
+  useEffect(() => {
+    let alive = true
+    const check = () => {
+      if (document.visibilityState !== 'visible') return
+      callApi<{ exists: boolean }>('whoami', { code: session.code, name: session.name })
+        .then(r => { if (alive && !r.exists) logoutRef.current() })
+        .catch(() => {}) // offline or server hiccup: never log out on an error
+    }
+    check()
+    document.addEventListener('visibilitychange', check)
+    return () => {
+      alive = false
+      document.removeEventListener('visibilitychange', check)
+    }
+  }, [session.code, session.name])
   const uploads = useUploads(session, () => void feed.refresh())
   const fileRef = useRef<HTMLInputElement>(null)
   const [album, setAlbum] = useState<FeedUser | null>(null)

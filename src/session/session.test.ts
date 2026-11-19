@@ -25,3 +25,10 @@ test('dati rovinati o incompleti: null', () => {
   expect(parseSession(JSON.stringify({ code: 'PROVA' }), 'PROVA')).toBeNull()
   expect(parseSession(JSON.stringify({ code: 'PROVA', name: 'Mario', avatarId: 5 }), 'PROVA')).toBeNull()
 })
+
+test('avatar del sito salvato nella sessione', () => {
+  expect(parseSession(JSON.stringify({ code: 'PROVA', name: 'Mario', avatarPreset: '4' }), 'PROVA')).toEqual({
+    code: 'PROVA', name: 'Mario', avatarPreset: '4',
+  })
+  expect(parseSession(JSON.stringify({ code: 'PROVA', name: 'Mario', avatarPreset: 4 }), 'PROVA')).toBeNull()
+})

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { ApiError, callApi } from './api/client'
 import Home from './home/Home'
 import { initialCode, rememberCode } from './session/eventCode'
-import { loadSession, saveSession, type Session } from './session/session'
+import { clearSession, loadSession, saveSession, type Session } from './session/session'
 import { sendFile } from './upload/sendFile'
 import NameStep from './welcome/NameStep'
 import ProfileStep from './welcome/ProfileStep'
@@ -38,13 +38,16 @@ export default function App() {
     setLoggingIn(true)
     const trimmed = code.trim()
     try {
-      const data = await callApi<{ name: string; folderId: string; avatarId?: string | null }>('login', {
+      const data = await callApi<{ name: string; folderId: string; avatarId?: string | null; avatarPreset?: string | null }>('login', {
         code: trimmed,
         name: name.trim(),
       })
       rememberCode(trimmed)
       // Returning guest with photos already: skip the selfie.
-      setSession(data.avatarId ? { code: trimmed, name: data.name, avatarId: data.avatarId } : { code: trimmed, name: data.name })
+      const next: Session = { code: trimmed, name: data.name }
+      if (data.avatarId) next.avatarId = data.avatarId
+      if (data.avatarPreset) next.avatarPreset = data.avatarPreset
+      setSession(next)
     } catch (e) {
       if (e instanceof ApiError && e.code === 'BAD_CODE') setShowCode(true)
       setLoginError(loginMessage(e))
@@ -70,16 +73,29 @@ export default function App() {
     )
   }
 
-  if (!session.avatarId) {
+  // The guest's folder was deleted: forget them on this phone and start over.
+  function logout() {
+    clearSession()
+    setSessionState(null)
+    setName('')
+    setLoginError('')
+    setWelcomed(false)
+  }
+
+  if (!session.avatarId && !session.avatarPreset) {
     return (
       <ProfileStep
         onUpload={async photo => {
           const avatarId = await sendFile(session, photo, 'profilo.jpg', 'avatar')
           setSession({ ...session, avatarId })
         }}
+        onPickPreset={async preset => {
+          await callApi('setAvatarPreset', { code: session.code, name: session.name, preset })
+          setSession({ ...session, avatarPreset: preset })
+        }}
       />
     )
   }
 
-  return <Home session={session} />
+  return <Home session={session} onLogout={logout} />
 }

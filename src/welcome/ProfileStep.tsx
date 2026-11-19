@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { AVATAR_PRESETS, avatarSrc } from '../avatars/avatars'
 import { fileToSquareJpeg, squareJpeg } from '../camera/crop'
 import './ProfileStep.css'
 
-type Phase = 'starting' | 'live' | 'blocked' | 'review' | 'sending'
+type Phase = 'starting' | 'live' | 'blocked' | 'review' | 'sending' | 'avatars' | 'saving'
 
 type Props = {
   onUpload: (photo: Blob) => Promise<void>
+  onPickPreset: (preset: string) => Promise<void> // one of the site avatars instead of a photo
 }
 
 const ArrowIcon = () => (
@@ -38,7 +40,7 @@ function blockedMessage(e: unknown): string {
 const UNSUPPORTED = 'Questo browser non può usare la fotocamera. Scegli una foto dalla galleria.'
 const cameraSupported = () => Boolean(navigator.mediaDevices?.getUserMedia)
 
-export default function ProfileStep({ onUpload }: Props) {
+export default function ProfileStep({ onUpload, onPickPreset }: Props) {
   const [phase, setPhase] = useState<Phase>(() => (cameraSupported() ? 'starting' : 'blocked'))
   const [notice, setNotice] = useState(() => (cameraSupported() ? '' : UNSUPPORTED))
   const [photo, setPhoto] = useState<{ blob: Blob; url: string } | null>(null)
@@ -46,6 +48,9 @@ export default function ProfileStep({ onUpload }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+  const [preset, setPreset] = useState<string | null>(null)
+  // false while the avatar grid is shown: a camera answering late must not take over the screen
+  const wantCamera = useRef(true)
 
   const stopCamera = useCallback(() => {
     streamRef.current?.getTracks().forEach(t => t.stop())
@@ -60,6 +65,10 @@ export default function ProfileStep({ onUpload }: Props) {
         video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 1280 } },
         audio: false,
       })
+      if (!wantCamera.current) {
+        stream.getTracks().forEach(t => t.stop())
+        return
+      }
       streamRef.current = stream
       setPhase('live')
     } catch (e) {
@@ -69,6 +78,7 @@ export default function ProfileStep({ onUpload }: Props) {
   }, [stopCamera])
 
   function startCamera() {
+    wantCamera.current = true
     if (!cameraSupported()) return
     setNotice('')
     setPhase('starting')
@@ -139,22 +149,70 @@ export default function ProfileStep({ onUpload }: Props) {
     }
   }
 
+  function chooseAvatars() {
+    wantCamera.current = false
+    stopCamera()
+    setNotice('')
+    setPhase('avatars')
+  }
+
+  function backToCamera() {
+    setPreset(null)
+    setNotice('')
+    if (cameraSupported()) startCamera()
+    else {
+      setNotice(UNSUPPORTED)
+      setPhase('blocked')
+    }
+  }
+
+  async function applyAvatar() {
+    if (!preset) return
+    setNotice('')
+    setPhase('saving')
+    try {
+      await onPickPreset(preset)
+    } catch {
+      setNotice('Non sono riuscito a salvare l’avatar. Controlla la connessione e riprova.')
+      setPhase('avatars')
+    }
+  }
+
   function retake() {
     setPhoto(null)
     startCamera()
   }
 
+  const picking = phase === 'avatars' || phase === 'saving'
   const showVideo = phase === 'live' || phase === 'starting'
   const showPhotoImg = (phase === 'review' || phase === 'sending') && photo
 
   return (
     <div className="screen profile-step">
       <div className="profile-step__head">
-        <h1 className="profile-step__title">Scattati una foto</h1>
+        <h1 className="profile-step__title">{picking ? 'Scegli un avatar' : 'Scattati una foto'}</h1>
         <p className="profile-step__subtitle">Sarà la tua foto profilo, così tutti sapranno chi ha scattato.</p>
       </div>
 
       <div className="profile-step__stage">
+        {picking ? (
+          <div className="profile-step__avatars" role="radiogroup" aria-label="Avatar">
+            {AVATAR_PRESETS.map(p => (
+              <button
+                type="button"
+                role="radio"
+                aria-checked={preset === p}
+                aria-label={`Avatar ${p}`}
+                className={`profile-step__avatar${preset === p ? ' is-selected' : ''}`}
+                onClick={() => setPreset(p)}
+                disabled={phase === 'saving'}
+                key={p}
+              >
+                <img src={avatarSrc(p)!} alt="" />
+              </button>
+            ))}
+          </div>
+        ) : (
         <div className={`profile-step__circle${flash ? ' is-flash' : ''}`}>
           {showVideo && (
             <video
@@ -173,6 +231,7 @@ export default function ProfileStep({ onUpload }: Props) {
           )}
           {phase === 'starting' && <div className="profile-step__spinner" aria-label="Apro la fotocamera" />}
         </div>
+        )}
       </div>
 
       <p className="profile-step__notice" role="alert">{notice}</p>
@@ -190,6 +249,24 @@ export default function ProfileStep({ onUpload }: Props) {
           <button className="cta" type="button" onClick={shoot} disabled={phase !== 'live'}>
             <CameraIcon />
             Scatta
+          </button>
+        )}
+
+        {picking && (
+          <>
+            <button className="cta" type="button" onClick={() => void applyAvatar()} disabled={!preset || phase === 'saving'}>
+              {phase === 'saving' ? 'Un attimo…' : 'Usa questo avatar'}
+              {phase !== 'saving' && <ArrowIcon />}
+            </button>
+            <button className="profile-step__small-link" type="button" onClick={backToCamera} disabled={phase === 'saving'}>
+              oppure scatta una foto
+            </button>
+          </>
+        )}
+
+        {(phase === 'live' || phase === 'starting' || phase === 'blocked') && (
+          <button className="profile-step__small-link" type="button" onClick={chooseAvatars}>
+            oppure scegli un avatar
           </button>
         )}
 
