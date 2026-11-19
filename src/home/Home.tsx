@@ -86,7 +86,8 @@ export default function Home({ session }: { session: Session }) {
 
   // The album is a history entry, so the phone's back gesture closes it.
   useEffect(() => {
-    const onPop = () => setAlbum(null)
+    // Back from a focused photo lands on the album entry ({album}); only leaving that closes the album.
+    const onPop = (e: PopStateEvent) => { if (!(e.state && e.state.album)) setAlbum(null) }
     window.addEventListener('popstate', onPop)
     return () => window.removeEventListener('popstate', onPop)
   }, [])

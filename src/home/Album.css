@@ -1,9 +1,9 @@
 .album {
-  --album-bg: #17141c;
-  --album-ink: #f5f5f7;
-  --album-soft: rgb(245 245 247 / 0.6);
-  --album-glass: rgb(255 255 255 / 0.08);
-  --album-edge: rgb(255 255 255 / 0.16);
+  --album-bg: var(--bg);
+  --album-ink: var(--ink);
+  --album-soft: var(--ink-muted);
+  --album-glass: rgb(255 255 255 / 0.75);
+  --album-edge: var(--line);
 
   position: fixed;
   inset: 0;
@@ -11,9 +11,7 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
-  background:
-    radial-gradient(120% 60% at 50% 0%, #3a2840 0%, transparent 60%),
-    var(--album-bg);
+  background: var(--album-bg);
   color: var(--album-ink);
   animation: album-in 320ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
@@ -29,7 +27,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  background: linear-gradient(to bottom, rgb(23 20 28 / 0.92) 55%, rgb(23 20 28 / 0));
+  background: linear-gradient(to bottom, rgb(245 245 247 / 0.94) 55%, rgb(245 245 247 / 0));
 }
 
 .album-back,
@@ -47,6 +45,7 @@
   background: var(--album-glass);
   color: var(--album-ink);
   cursor: pointer;
+  box-shadow: 0 6px 18px -10px rgb(0 0 0 / 0.25);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   -webkit-tap-highlight-color: transparent;
@@ -55,11 +54,11 @@
 
 .album-back:active {
   transform: scale(0.94);
-  background: rgb(255 255 255 / 0.14);
+  background: #fff;
 }
 
 .album-back:focus-visible {
-  outline: 3px solid rgb(255 255 255 / 0.5);
+  outline: 3px solid color-mix(in srgb, var(--accent) 45%, transparent);
   outline-offset: 3px;
 }
 
@@ -103,12 +102,37 @@
   gap: 10px;
 }
 
+.album.is-focused {
+  overflow: hidden; /* keep the tile where the photo will fly back to */
+}
+
 .album-tile {
   position: relative;
+  display: block;
   width: 100%;
+  padding: 0;
+  border: 0;
+  cursor: zoom-in;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 150ms ease;
   border-radius: 26px;
   overflow: hidden;
-  background: rgb(255 255 255 / 0.06);
+  background: #e5e5ea;
+  box-shadow: 0 10px 24px -18px rgb(0 0 0 / 0.35);
+}
+
+.album-tile:active {
+  transform: scale(0.97);
+}
+
+.album-tile:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  outline-offset: 3px;
+}
+
+/* The photo is up front: leave its slot empty so it visibly came from here */
+.album-tile.is-lifted {
+  visibility: hidden;
 }
 
 .album-tile img {
@@ -131,7 +155,7 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  border: 1px solid var(--album-edge);
+  border: 1px solid rgb(255 255 255 / 0.3);
   background: rgb(0 0 0 / 0.35);
   color: #fff;
   backdrop-filter: blur(10px);
@@ -160,10 +184,9 @@
   padding: 0 18px;
   border: 0;
   background: none;
-  color: var(--album-ink);
+  color: var(--accent);
   font: inherit;
   font-weight: 600;
-  text-decoration: underline;
   cursor: pointer;
 }
 

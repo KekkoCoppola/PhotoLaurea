@@ -1,6 +1,7 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { thumbnailUrl } from '../drive/urls'
 import { splitColumns } from './masonry'
+import PhotoFocus from './PhotoFocus'
 import { useAlbum, type AlbumItem } from './useAlbum'
 import './Album.css'
 
@@ -16,23 +17,51 @@ const clampRatio = (r: number) => Math.min(1.8, Math.max(0.6, r))
 
 const fotoLabel = (n: number) => (n === 1 ? '1 foto' : `${n} foto`)
 
-function Tile({ item }: { item: AlbumItem }) {
+function Tile({ item, hidden, onOpen }: { item: AlbumItem; hidden: boolean; onOpen: (rect: DOMRect) => void }) {
   return (
-    <div className="album-tile" style={{ aspectRatio: `1 / ${clampRatio(item.ratio)}` }}>
+    <button
+      type="button"
+      className={`album-tile${hidden ? ' is-lifted' : ''}`}
+      style={{ aspectRatio: `1 / ${clampRatio(item.ratio)}` }}
+      onClick={e => onOpen(e.currentTarget.getBoundingClientRect())}
+      aria-label={item.mimeType.startsWith('video/') ? 'Apri video' : 'Apri foto'}
+    >
       <img src={thumbnailUrl(item.id, 600)} alt="" loading="lazy" />
       {item.mimeType.startsWith('video/') && (
         <span className="album-tile__play" aria-label="Video">
           <svg width="14" height="14" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 1.8v8.4L10 6z" fill="currentColor" /></svg>
         </span>
       )}
-    </div>
+    </button>
   )
 }
+
+type Focus = { item: AlbumItem; from: DOMRect; closing: boolean }
 
 export default function Album({ code, name, count, onClose }: Props) {
   const album = useAlbum(code, name)
   const shownCount = album.status === 'ready' ? album.items.length : count
   const columns = splitColumns(album.items, 2)
+  const [focus, setFocus] = useState<Focus | null>(null)
+
+  // A focused photo is a history entry too: back gesture / Esc / tap outside fly it home.
+  function openPhoto(item: AlbumItem, from: DOMRect) {
+    window.history.pushState({ album: name, photo: item.id }, '')
+    setFocus({ item, from, closing: false })
+  }
+
+  useEffect(() => {
+    const onPop = (e: PopStateEvent) => {
+      if (!(e.state && e.state.photo)) setFocus(f => (f ? { ...f, closing: true } : f))
+    }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') window.history.back() }
+    window.addEventListener('popstate', onPop)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('popstate', onPop)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [])
 
   // The album scrolls on its own; freeze the home underneath so it keeps its position.
   useEffect(() => {
@@ -42,7 +71,7 @@ export default function Album({ code, name, count, onClose }: Props) {
   }, [])
 
   return (
-    <div className="album" role="dialog" aria-modal="true" aria-labelledby="album-title">
+    <div className={`album${focus ? ' is-focused' : ''}`} role="dialog" aria-modal="true" aria-labelledby="album-title">
       <header className="album-head">
         <button className="album-back" type="button" onClick={onClose} aria-label="Torna indietro">
           <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
@@ -83,10 +112,22 @@ export default function Album({ code, name, count, onClose }: Props) {
         <div className="album-grid">
           {columns.map((col, c) => (
             <div className="album-col" key={c}>
-              {col.map(item => <Tile item={item} key={item.id} />)}
+              {col.map(item => (
+                <Tile item={item} hidden={focus?.item.id === item.id} onOpen={rect => openPhoto(item, rect)} key={item.id} />
+              ))}
             </div>
           ))}
         </div>
+      )}
+
+      {focus && (
+        <PhotoFocus
+          item={focus.item}
+          from={focus.from}
+          closing={focus.closing}
+          onClose={() => window.history.back()}
+          onClosed={() => setFocus(null)}
+        />
       )}
     </div>
   )
