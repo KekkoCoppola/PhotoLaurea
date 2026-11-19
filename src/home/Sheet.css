@@ -1,0 +1,161 @@
+.sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+/* Home goes soft and dim behind the sheet; tapping it means "leave" */
+.sheet__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgb(29 29 31 / 0.28);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.sheet__panel {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 480px;
+  padding: 12px 24px max(22px, env(safe-area-inset-bottom));
+  border-radius: 32px 32px 0 0;
+  background: #fff;
+  box-shadow: 0 -20px 50px -20px rgb(0 0 0 / 0.3);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.sheet__grabber {
+  flex: none;
+  width: 40px;
+  height: 5px;
+  border-radius: 3px;
+  background: #e5e5ea;
+}
+
+/* ---------- discard confirmation ---------- */
+.sheet__confirm {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgb(29 29 31 / 0.25);
+  animation: sheet-fade 160ms ease-out both;
+}
+
+.sheet__confirm-card {
+  width: 100%;
+  max-width: 300px;
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 30px 60px -20px rgb(0 0 0 / 0.4);
+  text-align: center;
+  overflow: hidden;
+  animation: sheet-in 180ms ease-out both;
+}
+
+.sheet__confirm-title {
+  margin: 22px 20px 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.sheet__confirm-text {
+  margin: 8px 20px 20px;
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--ink-muted);
+}
+
+.sheet__confirm-buttons {
+  display: flex;
+  border-top: 1px solid var(--line);
+}
+
+.sheet__confirm-buttons button {
+  flex: 1;
+  min-height: 52px;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: 17px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.sheet__confirm-buttons button + button {
+  border-left: 1px solid var(--line);
+}
+
+.sheet__confirm-buttons .is-danger {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+/* ---------- send button shared by both sheets ---------- */
+.sheet__send {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--ink);
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 12px 24px -12px rgb(0 0 0 / 0.55);
+  transition: transform 120ms ease, background-color 200ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sheet__send:active:not(:disabled) {
+  transform: scale(0.92);
+}
+
+.sheet__send:disabled:not(.is-sending) {
+  background: #e5e5ea;
+  color: #aeaeb2;
+  box-shadow: none;
+  cursor: default;
+}
+
+.sheet__send:focus-visible {
+  outline: 3px solid rgb(29 29 31 / 0.35);
+  outline-offset: 3px;
+}
+
+.sheet__spinner {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2.5px solid rgb(255 255 255 / 0.3);
+  border-top-color: #fff;
+  animation: sheet-spin 800ms linear infinite;
+}
+
+@keyframes sheet-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes sheet-fade {
+  from { opacity: 0; }
+}
+@keyframes sheet-in {
+  from { opacity: 0; transform: scale(0.96); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet__confirm,
+  .sheet__confirm-card,
+  .sheet__spinner {
+    animation: none;
+  }
+}

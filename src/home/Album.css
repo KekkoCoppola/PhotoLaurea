@@ -135,6 +135,45 @@
   visibility: hidden;
 }
 
+/* Message: the start of the text shows, fading out at the bottom */
+.album-tile--text {
+  background: #fff;
+}
+
+.album-tile__text {
+  position: absolute;
+  inset: 0;
+  padding: 18px 18px 0;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.45;
+  text-align: left;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  -webkit-mask-image: linear-gradient(to bottom, #000 62%, transparent 96%);
+  mask-image: linear-gradient(to bottom, #000 62%, transparent 96%);
+}
+
+/* Voice note: grey microphone, duration below */
+.album-tile--voice {
+  background: #ececf0;
+}
+
+.album-tile__voice {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #8e8e93;
+  font-size: 15px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
 .album-tile img {
   display: block;
   width: 100%;

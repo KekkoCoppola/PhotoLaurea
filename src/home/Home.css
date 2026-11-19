@@ -7,6 +7,53 @@
   background: var(--bg);
 }
 
+/* ---------- title ---------- */
+.home-title {
+  /* room above for the cap */
+  padding: 30px 0 34px;
+  text-align: center;
+  animation: screen-fade 500ms ease-out both;
+}
+
+.home-title h1 {
+  margin: 0;
+  font-size: clamp(36px, 11vw, 46px);
+  line-height: 1;
+  font-weight: 500;
+  letter-spacing: -0.035em;
+  color: var(--ink-soft);
+}
+
+.home-title strong {
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.home-title__capped {
+  position: relative;
+  display: inline-block;
+}
+
+/* Worn on the final o. In the image the crown (the part that fits the head) spans ~31–94%
+   of the width, centred at 62%: that centre goes over the middle of the o, the band rests on
+   the top of the letter (x-height ≈ 0.61em above the box bottom) and sinks in a hair. */
+.home-title__cap {
+  position: absolute;
+  left: 50%;
+  bottom: 0.63em;
+  width: 0.98em;
+  transform: translateX(-62%) rotate(-6deg);
+  transform-origin: 62% 100%;
+  pointer-events: none;
+  filter: drop-shadow(0 3px 4px rgb(0 0 0 / 0.16));
+  animation: cap-in 500ms 200ms ease-out both;
+}
+
+@keyframes cap-in {
+  from { opacity: 0; transform: translateX(-62%) translateY(-25%) rotate(-6deg); }
+}
+
+
 /* ---------- one guest ---------- */
 .home-list {
   display: flex;
@@ -76,6 +123,43 @@
   color: #fff;
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
+}
+
+.home-card--text {
+  background: #fff;
+}
+
+.home-card__text {
+  position: absolute;
+  inset: 0;
+  padding: 12px 11px 0;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 1.4;
+  text-align: left;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  -webkit-mask-image: linear-gradient(to bottom, #000 60%, transparent 95%);
+  mask-image: linear-gradient(to bottom, #000 60%, transparent 95%);
+}
+
+.home-card--voice {
+  background: #ececf0;
+}
+
+.home-card__voice {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: #8e8e93;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 .home-card--more img {
@@ -269,12 +353,42 @@
   to { opacity: 0.45; }
 }
 
-/* ---------- camera button ---------- */
-.home-fab {
+/* ---------- actions: message, voice note, camera ---------- */
+.home-actions {
   position: fixed;
   right: max(20px, calc((100vw - 480px) / 2 + 20px));
   bottom: max(24px, env(safe-area-inset-bottom));
   z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.home-mini {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border: 0;
+  border-radius: 50%;
+  background: #fff;
+  color: var(--ink);
+  cursor: pointer;
+  box-shadow: 0 10px 24px -10px rgb(0 0 0 / 0.35), 0 1px 3px rgb(0 0 0 / 0.08);
+  transition: transform 120ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.home-mini:active {
+  transform: scale(0.92);
+}
+
+.home-mini:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  outline-offset: 3px;
+}
+
+.home-fab {
   display: grid;
   place-items: center;
   width: 66px;
@@ -300,6 +414,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .home-user,
+  .home-title,
+  .home-title__cap,
   .home-skeleton__row span {
     animation: none;
   }

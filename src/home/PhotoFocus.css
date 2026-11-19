@@ -60,3 +60,104 @@
   padding-left: 4px;
   box-sizing: border-box;
 }
+
+/* ---------- message: scrolls inside the card ---------- */
+.focus__frame--text,
+.focus__frame--voice {
+  background: #fff;
+}
+
+.focus__text {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 26px 24px 30px;
+  color: var(--ink);
+  font-size: 19px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  /* content appears once the card has mostly landed (it is stretched while flying) */
+  animation: focus-content 220ms 200ms ease-out both;
+}
+
+/* ---------- voice note player ---------- */
+.voice {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 22px;
+  animation: focus-content 220ms 200ms ease-out both;
+}
+
+.voice__play {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 10px 20px -10px color-mix(in srgb, var(--accent) 70%, transparent);
+  transition: transform 120ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.voice__play:active {
+  transform: scale(0.92);
+}
+
+.voice__play:disabled {
+  background: #c7c7cc;
+  box-shadow: none;
+}
+
+.voice__track {
+  flex: 1;
+  min-width: 0;
+}
+
+.voice__bars {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 46px;
+}
+
+.voice__bars span {
+  flex: 1;
+  min-height: 4px;
+  border-radius: 2px;
+  background: #d1d1d6;
+  transition: background-color 120ms linear;
+}
+
+.voice__bars span.is-played {
+  background: var(--accent);
+}
+
+.voice__time {
+  display: block;
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes focus-content {
+  from { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .focus__text,
+  .voice {
+    animation: none;
+  }
+}

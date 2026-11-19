@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { callApi } from '../api/client'
+import type { GalleryItem } from './items'
 
-export type AlbumItem = { id: string; mimeType: string; ratio: number }
+export type AlbumItem = GalleryItem
 
 type AlbumState = { items: AlbumItem[]; status: 'loading' | 'ready' | 'error' }
 

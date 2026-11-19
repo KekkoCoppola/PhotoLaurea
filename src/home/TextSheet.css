@@ -1,0 +1,49 @@
+/* Message composer inside the shared bottom sheet (see Sheet.css): all white, no boxes. */
+
+.tsheet {
+  align-items: stretch;
+}
+
+.tsheet .sheet__grabber {
+  align-self: center;
+}
+
+.tsheet__input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 34dvh;
+  max-height: 55dvh;
+  margin-top: 18px;
+  padding: 4px 2px;
+  border: 0;
+  outline: none;
+  resize: none;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 20px;
+  line-height: 1.5;
+  caret-color: var(--ink);
+}
+
+.tsheet__input::placeholder {
+  color: #c7c7cc;
+}
+
+.tsheet__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.tsheet__note {
+  font-size: 14px;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.tsheet__note.is-error {
+  color: var(--danger);
+}

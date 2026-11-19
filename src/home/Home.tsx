@@ -1,8 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
+import cap from '../assets/cap.png'
 import { thumbnailUrl } from '../drive/urls'
 import type { Session } from '../session/session'
+import { sendFile } from '../upload/sendFile'
 import Album from './Album'
+import { MicIcon, PencilIcon } from './icons'
+import { hasThumbnail, kindOf, type GalleryItem } from './items'
 import { timeAgo } from './relativeTime'
+import { formatDuration } from './voice'
+import TextSheet from './TextSheet'
+import VoiceSheet from './VoiceSheet'
 import { useFeed, type FeedUser } from './useFeed'
 import { useUploads } from './useUploads'
 import './Home.css'
@@ -19,6 +26,29 @@ function Avatar({ user }: { user: FeedUser }) {
     return <span className="home-avatar home-avatar--empty" aria-hidden="true">{user.name.charAt(0).toUpperCase()}</span>
   }
   return <img className="home-avatar" src={thumbnailUrl(user.avatarId, 160)} alt="" onError={() => setBroken(true)} />
+}
+
+function CardContent({ item }: { item: GalleryItem }) {
+  const kind = kindOf(item)
+  if (kind === 'text') return <span className="home-card__text">{item.text}</span>
+  if (kind === 'voice') {
+    return (
+      <span className="home-card__voice">
+        <MicIcon size={28} />
+        <span>{formatDuration(item.durationMs ?? 0)}</span>
+      </span>
+    )
+  }
+  return (
+    <>
+      <img src={thumbnailUrl(item.id, 400)} alt="" loading="lazy" />
+      {kind === 'video' && (
+        <span className="home-card__play" aria-label="Video">
+          <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 1.8v8.4L10 6z" fill="currentColor" /></svg>
+        </span>
+      )}
+    </>
+  )
 }
 
 function UserStack({ user, now, onOpen }: { user: FeedUser; now: Date; onOpen: () => void }) {
@@ -42,18 +72,13 @@ function UserStack({ user, now, onOpen }: { user: FeedUser; now: Date; onOpen: (
     <button type="button" className="home-user" onClick={onOpen} aria-label={`Apri l’album di ${user.name}`}>
       <span className="home-stack">
         {shown.map((item, i) => (
-          <span className="home-card" style={place(i)} key={item.id}>
-            <img src={thumbnailUrl(item.id, 400)} alt="" loading="lazy" />
-            {item.mimeType.startsWith('video/') && (
-              <span className="home-card__play" aria-label="Video">
-                <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 1.8v8.4L10 6z" fill="currentColor" /></svg>
-              </span>
-            )}
+          <span className={`home-card home-card--${kindOf(item)}`} style={place(i)} key={item.id}>
+            <CardContent item={item} />
           </span>
         ))}
         {blurred && (
           <span className="home-card home-card--more" style={place(shown.length)}>
-            <img src={thumbnailUrl(blurred.id, 120)} alt="" loading="lazy" />
+            {hasThumbnail(blurred) && <img src={thumbnailUrl(blurred.id, 120)} alt="" loading="lazy" />}
             <span className="home-card__count">+{extra}</span>
           </span>
         )}
@@ -75,6 +100,8 @@ export default function Home({ session }: { session: Session }) {
   const uploads = useUploads(session, () => void feed.refresh())
   const fileRef = useRef<HTMLInputElement>(null)
   const [album, setAlbum] = useState<FeedUser | null>(null)
+  const [voiceOpen, setVoiceOpen] = useState(false)
+  const [textOpen, setTextOpen] = useState(false)
   const [tickAt, setTickAt] = useState(() => Date.now())
   // "2 minuti fa" is measured from the latest of: last feed answer, last 30s tick.
   const now = new Date(Math.max(tickAt, feed.fetchedAt))
@@ -99,6 +126,19 @@ export default function Home({ session }: { session: Session }) {
 
   return (
     <div className="home">
+      <header className="home-title">
+        <h1 aria-label="LaureaKekko">
+          Laurea
+          <strong>
+            Kekk
+            <span className="home-title__capped">
+              o
+              <img className="home-title__cap" src={cap} alt="" aria-hidden="true" />
+            </span>
+          </strong>
+        </h1>
+      </header>
+
       {(uploads.busy || uploads.failedCount > 0) && (
         <div className="home-upload" role="status">
           {uploads.busy ? (
@@ -147,6 +187,27 @@ export default function Home({ session }: { session: Session }) {
         <Album code={session.code} name={album.name} count={album.count} onClose={() => window.history.back()} />
       )}
 
+      {textOpen && (
+        <TextSheet
+          onClose={() => setTextOpen(false)}
+          onUpload={async text => {
+            const blob = new Blob([text], { type: 'text/plain;charset=utf-8' })
+            await sendFile(session, blob, 'messaggio.txt', 'text', undefined, { text })
+            void feed.refresh()
+          }}
+        />
+      )}
+
+      {voiceOpen && (
+        <VoiceSheet
+          onClose={() => setVoiceOpen(false)}
+          onUpload={async (blob, extension, durationMs) => {
+            await sendFile(session, blob, `nota-vocale.${extension}`, 'voice', undefined, { durationMs: Math.round(durationMs) })
+            void feed.refresh()
+          }}
+        />
+      )}
+
       <input
         ref={fileRef}
         type="file"
@@ -156,15 +217,23 @@ export default function Home({ session }: { session: Session }) {
         hidden
         onChange={e => { uploads.add(Array.from(e.target.files ?? [])); e.target.value = '' }}
       />
-      <button className="home-fab" type="button" aria-label="Scatta una foto" onClick={() => fileRef.current?.click()}>
-        <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true">
-          <path
-            d="M4 8.5A2.5 2.5 0 0 1 6.5 6h1.3l1.2-1.7A1.5 1.5 0 0 1 10.2 3.6h3.6a1.5 1.5 0 0 1 1.2.7L16.2 6h1.3A2.5 2.5 0 0 1 20 8.5v8a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5z"
-            fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round"
-          />
-          <circle cx="12" cy="12.5" r="3.4" fill="none" stroke="currentColor" strokeWidth="1.7" />
-        </svg>
-      </button>
+      <div className="home-actions">
+        <button className="home-mini" type="button" aria-label="Scrivi un messaggio" onClick={() => setTextOpen(true)}>
+          <PencilIcon />
+        </button>
+        <button className="home-mini" type="button" aria-label="Registra una nota vocale" onClick={() => setVoiceOpen(true)}>
+          <MicIcon size={24} />
+        </button>
+        <button className="home-fab" type="button" aria-label="Scatta una foto" onClick={() => fileRef.current?.click()}>
+          <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M4 8.5A2.5 2.5 0 0 1 6.5 6h1.3l1.2-1.7A1.5 1.5 0 0 1 10.2 3.6h3.6a1.5 1.5 0 0 1 1.2.7L16.2 6h1.3A2.5 2.5 0 0 1 20 8.5v8a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5z"
+              fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round"
+            />
+            <circle cx="12" cy="12.5" r="3.4" fill="none" stroke="currentColor" strokeWidth="1.7" />
+          </svg>
+        </button>
+      </div>
     </div>
   )
 }

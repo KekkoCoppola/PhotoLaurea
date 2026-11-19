@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { callApi } from '../api/client'
+import type { GalleryItem } from './items'
 
-export type FeedItem = { id: string; mimeType: string }
+export type FeedItem = GalleryItem
 export type FeedUser = {
   name: string
   avatarId: string | null

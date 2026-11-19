@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react'
 import { thumbnailUrl } from '../drive/urls'
+import { MicIcon } from './icons'
+import { kindOf } from './items'
 import { splitColumns } from './masonry'
 import PhotoFocus from './PhotoFocus'
 import { useAlbum, type AlbumItem } from './useAlbum'
+import { formatDuration } from './voice'
 import './Album.css'
 
 type Props = {
@@ -17,19 +20,29 @@ const clampRatio = (r: number) => Math.min(1.8, Math.max(0.6, r))
 
 const fotoLabel = (n: number) => (n === 1 ? '1 foto' : `${n} foto`)
 
+const LABEL = { photo: 'Apri foto', video: 'Apri video', text: 'Apri messaggio', voice: 'Apri nota vocale' }
+
 function Tile({ item, hidden, onOpen }: { item: AlbumItem; hidden: boolean; onOpen: (rect: DOMRect) => void }) {
+  const kind = kindOf(item)
   return (
     <button
       type="button"
-      className={`album-tile${hidden ? ' is-lifted' : ''}`}
+      className={`album-tile album-tile--${kind}${hidden ? ' is-lifted' : ''}`}
       style={{ aspectRatio: `1 / ${clampRatio(item.ratio)}` }}
       onClick={e => onOpen(e.currentTarget.getBoundingClientRect())}
-      aria-label={item.mimeType.startsWith('video/') ? 'Apri video' : 'Apri foto'}
+      aria-label={LABEL[kind]}
     >
-      <img src={thumbnailUrl(item.id, 600)} alt="" loading="lazy" />
-      {item.mimeType.startsWith('video/') && (
+      {(kind === 'photo' || kind === 'video') && <img src={thumbnailUrl(item.id, 600)} alt="" loading="lazy" />}
+      {kind === 'video' && (
         <span className="album-tile__play" aria-label="Video">
           <svg width="14" height="14" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 1.8v8.4L10 6z" fill="currentColor" /></svg>
+        </span>
+      )}
+      {kind === 'text' && <span className="album-tile__text">{item.text}</span>}
+      {kind === 'voice' && (
+        <span className="album-tile__voice">
+          <MicIcon />
+          <span>{formatDuration(item.durationMs ?? 0)}</span>
         </span>
       )}
     </button>

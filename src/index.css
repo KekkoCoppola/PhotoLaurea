@@ -4,8 +4,9 @@
   --ink-soft: #8e8e93;
   --ink-muted: #86868b;
   --line: #e3e3e8;
-  --accent: #0a74ec;
-  --accent-press: #0862c9;
+  /* black & white app: the accent is the ink itself */
+  --accent: #1d1d1f;
+  --accent-press: #000;
   --danger: #d70015;
   --font: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, 'Segoe UI', Roboto, sans-serif;
 }
@@ -26,7 +27,7 @@ main { padding: 16px; }
   overflow: hidden;
 }
 
-/* Primary blue button */
+/* Primary black button */
 .cta {
   width: 100%;
   min-height: 58px;
