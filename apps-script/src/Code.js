@@ -46,10 +46,10 @@ var ACTIONS_ = {
           'X-Upload-Content-Length': String(size),
           Origin: prop_('ALLOWED_ORIGIN'),
         },
-        payload: JSON.stringify({
-          name: buildDriveFileName(String(req.fileName), new Date()),
-          parents: [folder.getId()],
-        }),
+        payload: JSON.stringify(Object.assign(
+          { parents: [folder.getId()] },
+          uploadMeta(req.kind, String(req.fileName), new Date())
+        )),
       }
     );
     var headers = res.getAllHeaders();

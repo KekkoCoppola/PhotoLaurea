@@ -6,7 +6,7 @@ import { expect, test } from 'vitest'
 
 const ctx = {}
 runInNewContext(readFileSync(new URL('../src/lib.js', import.meta.url), 'utf8'), ctx)
-const { normalizeName, nameKey, buildDriveFileName, isValidCode } = ctx
+const { normalizeName, nameKey, buildDriveFileName, buildAvatarFileName, uploadMeta, isValidCode } = ctx
 
 test('normalizeName pulisce', () => {
   expect(normalizeName('  Paolo   Rossi ')).toBe('Paolo Rossi')
@@ -35,4 +35,19 @@ test('isValidCode', () => {
   expect(isValidCode('LAUREA25', 'LAUREA26')).toBe(false)
   expect(isValidCode('', '')).toBe(false)
   expect(isValidCode(undefined, 'LAUREA26')).toBe(false)
+})
+
+test('buildAvatarFileName marca la foto profilo con ora di Roma', () => {
+  expect(buildAvatarFileName(new Date('2026-11-20T18:05:09Z'))).toBe('PROFILO_20261120-190509.jpg')
+})
+
+test('uploadMeta: foto profilo marcata, upload normale no', () => {
+  const when = new Date('2026-11-20T18:05:09Z')
+  const avatar = uploadMeta('avatar', 'qualsiasi.png', when)
+  expect(avatar.name).toBe('PROFILO_20261120-190509.jpg')
+  expect({ ...avatar.appProperties }).toEqual({ photolaurea: 'avatar' })
+  const media = uploadMeta(undefined, 'IMG_1.jpg', when)
+  expect(media.name).toBe('20261120-190509_IMG_1.jpg')
+  expect(media.appProperties).toBeUndefined()
+  expect(uploadMeta('boh', 'x.jpg', when).appProperties).toBeUndefined()
 })
