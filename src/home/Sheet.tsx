@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+import ConfirmDialog from './ConfirmDialog'
 import './Sheet.css'
 
 type Props = {
@@ -117,18 +118,12 @@ export default function Sheet({
       </div>
 
       {confirm && (
-        <div className="sheet__confirm" role="alertdialog" aria-labelledby="sheet-confirm-title">
-          <div className="sheet__confirm-card">
-            <p id="sheet-confirm-title" className="sheet__confirm-title">{confirmTitle}</p>
-            <p className="sheet__confirm-text">{confirmText}</p>
-            <div className="sheet__confirm-buttons">
-              <button type="button" onClick={() => setConfirm(false)}>Annulla</button>
-              <button type="button" className="is-danger" onClick={() => { setConfirm(false); leave() }}>
-                Elimina
-              </button>
-            </div>
-          </div>
-        </div>
+        <ConfirmDialog
+          title={confirmTitle}
+          text={confirmText}
+          onCancel={() => setConfirm(false)}
+          onConfirm={() => { setConfirm(false); leave() }}
+        />
       )}
     </div>,
     document.body,

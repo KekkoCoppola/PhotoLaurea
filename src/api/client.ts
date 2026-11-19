@@ -1,7 +1,7 @@
 // Client for the Apps Script Web App. text/plain avoids the CORS preflight Apps Script cannot answer.
 
-export type ApiAction = 'ping' | 'login' | 'startUpload' | 'feed' | 'album'
-export type ApiErrorCode = 'BAD_REQUEST' | 'BAD_CODE' | 'BAD_NAME' | 'UPSTREAM' | 'SERVER'
+export type ApiAction = 'ping' | 'login' | 'startUpload' | 'feed' | 'album' | 'media' | 'setVisibility' | 'deleteItem'
+export type ApiErrorCode = 'BAD_REQUEST' | 'BAD_CODE' | 'BAD_NAME' | 'FORBIDDEN' | 'UPSTREAM' | 'SERVER'
 
 export class ApiError extends Error {
   code: ApiErrorCode

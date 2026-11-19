@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
+import { callApi } from '../api/client'
 import { thumbnailUrl } from '../drive/urls'
-import { MicIcon } from './icons'
+import { EyeOffIcon, MicIcon } from './icons'
 import { kindOf } from './items'
 import { splitColumns } from './masonry'
 import PhotoFocus from './PhotoFocus'
@@ -10,10 +11,15 @@ import './Album.css'
 
 type Props = {
   code: string
-  name: string
+  name: string // whose album
+  viewer: string // who is looking (the owner also sees hidden items)
+  own: boolean // the viewer's own album: items can be hidden or deleted
   count: number // from the home feed, shown until the album answers
+  onChanged: () => void // an owner change happened: refresh the home
   onClose: () => void
 }
+
+export type Visibility = 'all' | 'private'
 
 // Very tall panoramas / very wide shots are cropped so one photo never fills the screen.
 const clampRatio = (r: number) => Math.min(1.8, Math.max(0.6, r))
@@ -45,17 +51,43 @@ function Tile({ item, hidden, onOpen }: { item: AlbumItem; hidden: boolean; onOp
           <span>{formatDuration(item.durationMs ?? 0)}</span>
         </span>
       )}
+      {item.visibility === 'private' && (
+        <span className="album-tile__private" title="Solo io e Kekko">
+          <EyeOffIcon size={15} />
+        </span>
+      )}
     </button>
   )
 }
 
 type Focus = { item: AlbumItem; from: DOMRect; closing: boolean }
 
-export default function Album({ code, name, count, onClose }: Props) {
-  const album = useAlbum(code, name)
+export default function Album({ code, name, viewer, own, count, onChanged, onClose }: Props) {
+  const album = useAlbum(code, name, viewer)
   const shownCount = album.status === 'ready' ? album.items.length : count
   const columns = splitColumns(album.items, 2)
   const [focus, setFocus] = useState<Focus | null>(null)
+
+  // Owner actions. The backend checks again that the file is in the viewer's folder.
+  async function setVisibility(item: AlbumItem, visibility: Visibility) {
+    await callApi('setVisibility', { code, name: viewer, id: item.id, visibility })
+    const change = { visibility: visibility === 'private' ? ('private' as const) : undefined }
+    album.patchItem(item.id, change)
+    setFocus(f => (f && f.item.id === item.id ? { ...f, item: { ...f.item, ...change } } : f))
+    onChanged()
+  }
+
+  async function deleteItem(item: AlbumItem) {
+    await callApi('deleteItem', { code, name: viewer, id: item.id })
+  }
+
+  // Deleted: the card has faded out; drop the tile and the photo's history entry.
+  function afterDelete(item: AlbumItem) {
+    album.patchItem(item.id, null)
+    setFocus(null)
+    if (window.history.state?.photo === item.id) window.history.back()
+    onChanged()
+  }
 
   // A focused photo is a history entry too: back gesture / Esc / tap outside fly it home.
   function openPhoto(item: AlbumItem, from: DOMRect) {
@@ -135,6 +167,11 @@ export default function Album({ code, name, count, onClose }: Props) {
 
       {focus && (
         <PhotoFocus
+          code={code}
+          own={own}
+          onVisibility={v => setVisibility(focus.item, v)}
+          onDelete={() => deleteItem(focus.item)}
+          onDeleted={() => afterDelete(focus.item)}
           item={focus.item}
           from={focus.from}
           closing={focus.closing}

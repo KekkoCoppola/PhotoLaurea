@@ -38,69 +38,6 @@
   background: #e5e5ea;
 }
 
-/* ---------- discard confirmation ---------- */
-.sheet__confirm {
-  position: fixed;
-  inset: 0;
-  z-index: 2;
-  display: grid;
-  place-items: center;
-  padding: 24px;
-  background: rgb(29 29 31 / 0.25);
-  animation: sheet-fade 160ms ease-out both;
-}
-
-.sheet__confirm-card {
-  width: 100%;
-  max-width: 300px;
-  border-radius: 22px;
-  background: #fff;
-  box-shadow: 0 30px 60px -20px rgb(0 0 0 / 0.4);
-  text-align: center;
-  overflow: hidden;
-  animation: sheet-in 180ms ease-out both;
-}
-
-.sheet__confirm-title {
-  margin: 22px 20px 0;
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--ink);
-}
-
-.sheet__confirm-text {
-  margin: 8px 20px 20px;
-  font-size: 15px;
-  line-height: 1.4;
-  color: var(--ink-muted);
-}
-
-.sheet__confirm-buttons {
-  display: flex;
-  border-top: 1px solid var(--line);
-}
-
-.sheet__confirm-buttons button {
-  flex: 1;
-  min-height: 52px;
-  border: 0;
-  background: none;
-  color: var(--ink);
-  font: inherit;
-  font-size: 17px;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.sheet__confirm-buttons button + button {
-  border-left: 1px solid var(--line);
-}
-
-.sheet__confirm-buttons .is-danger {
-  color: var(--danger);
-  font-weight: 700;
-}
-
 /* ---------- send button shared by both sheets ---------- */
 .sheet__send {
   display: grid;
@@ -145,16 +82,8 @@
 @keyframes sheet-spin {
   to { transform: rotate(360deg); }
 }
-@keyframes sheet-fade {
-  from { opacity: 0; }
-}
-@keyframes sheet-in {
-  from { opacity: 0; transform: scale(0.96); }
-}
 
 @media (prefers-reduced-motion: reduce) {
-  .sheet__confirm,
-  .sheet__confirm-card,
   .sheet__spinner {
     animation: none;
   }

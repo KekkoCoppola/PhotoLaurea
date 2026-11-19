@@ -9,10 +9,39 @@
 
 /* ---------- title ---------- */
 .home-title {
-  /* room above for the cap */
-  padding: 30px 0 34px;
+  padding: 8px 0 34px;
   text-align: center;
   animation: screen-fade 500ms ease-out both;
+}
+
+/* Cap centred above the whole word, a soft shadow under it, close to the letters */
+.home-title__cap {
+  position: relative;
+  display: inline-block;
+  margin-bottom: 6px;
+  animation: cap-in 500ms 150ms ease-out both;
+}
+
+.home-title__cap img {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 64px;
+  height: auto;
+  transform: rotate(-6deg);
+}
+
+.home-title__cap::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -5px;
+  width: 52px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgb(0 0 0 / 0.22);
+  filter: blur(3px);
+  transform: translateX(-50%);
 }
 
 .home-title h1 {
@@ -29,30 +58,9 @@
   color: var(--ink);
 }
 
-.home-title__capped {
-  position: relative;
-  display: inline-block;
-}
-
-/* Worn on the final o. In the image the crown (the part that fits the head) spans ~31–94%
-   of the width, centred at 62%: that centre goes over the middle of the o, the band rests on
-   the top of the letter (x-height ≈ 0.61em above the box bottom) and sinks in a hair. */
-.home-title__cap {
-  position: absolute;
-  left: 50%;
-  bottom: 0.63em;
-  width: 0.98em;
-  transform: translateX(-62%) rotate(-6deg);
-  transform-origin: 62% 100%;
-  pointer-events: none;
-  filter: drop-shadow(0 3px 4px rgb(0 0 0 / 0.16));
-  animation: cap-in 500ms 200ms ease-out both;
-}
-
 @keyframes cap-in {
-  from { opacity: 0; transform: translateX(-62%) translateY(-25%) rotate(-6deg); }
+  from { opacity: 0; transform: translateY(-8px); }
 }
-
 
 /* ---------- one guest ---------- */
 .home-list {
@@ -226,6 +234,14 @@
   color: var(--ink-muted);
   font-size: 16px;
   font-weight: 600;
+}
+
+.home-user__you {
+  display: block;
+  margin-top: 2px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink-soft);
 }
 
 .home-user__meta time {

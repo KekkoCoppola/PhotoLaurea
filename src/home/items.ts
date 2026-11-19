@@ -8,6 +8,7 @@ export type GalleryItem = {
   ratio: number // height / width as displayed
   text?: string // kind 'text'
   durationMs?: number // kind 'voice'
+  visibility?: 'private' // "Solo io e Kekko": only sent to the owner
 }
 
 export const kindOf = (item: GalleryItem): ItemKind =>

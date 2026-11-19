@@ -51,7 +51,11 @@ function CardContent({ item }: { item: GalleryItem }) {
   )
 }
 
-function UserStack({ user, now, onOpen }: { user: FeedUser; now: Date; onOpen: () => void }) {
+// Same rule as the backend: names match ignoring case and repeated spaces.
+const sameName = (a: string, b: string) =>
+  a.trim().replace(/\s+/g, ' ').toLocaleLowerCase('it') === b.trim().replace(/\s+/g, ' ').toLocaleLowerCase('it')
+
+function UserStack({ user, now, own, onOpen }: { user: FeedUser; now: Date; own: boolean; onOpen: () => void }) {
   const shown = user.recent.slice(0, VISIBLE_CARDS)
   const extra = user.count - shown.length
   const blurred = extra > 0 ? user.recent[VISIBLE_CARDS] ?? user.recent[0] : null
@@ -89,6 +93,7 @@ function UserStack({ user, now, onOpen }: { user: FeedUser; now: Date; onOpen: (
           <Avatar user={user} />
           <span className="home-user__title">{user.name}</span>
         </span>
+        {own && <span className="home-user__you">(Tu)</span>}
         <time dateTime={user.lastUpload}>{timeAgo(user.lastUpload, now)}</time>
       </span>
     </button>
@@ -124,18 +129,17 @@ export default function Home({ session }: { session: Session }) {
     setAlbum(user)
   }
 
+  // Your own album always comes first; the others keep the feed order (latest upload first).
+  const users = [...feed.users].sort((a, b) => Number(sameName(b.name, session.name)) - Number(sameName(a.name, session.name)))
+
   return (
     <div className="home">
       <header className="home-title">
-        <h1 aria-label="LaureaKekko">
-          Laurea
-          <strong>
-            Kekk
-            <span className="home-title__capped">
-              o
-              <img className="home-title__cap" src={cap} alt="" aria-hidden="true" />
-            </span>
-          </strong>
+        <span className="home-title__cap" aria-hidden="true">
+          <img src={cap} alt="" />
+        </span>
+        <h1>
+          Laurea<strong>Kekko</strong>
         </h1>
       </header>
 
@@ -180,11 +184,21 @@ export default function Home({ session }: { session: Session }) {
       )}
 
       <div className="home-list">
-        {feed.users.map(user => <UserStack user={user} now={now} onOpen={() => openAlbum(user)} key={user.name} />)}
+        {users.map(user => (
+          <UserStack user={user} now={now} own={sameName(user.name, session.name)} onOpen={() => openAlbum(user)} key={user.name} />
+        ))}
       </div>
 
       {album && (
-        <Album code={session.code} name={album.name} count={album.count} onClose={() => window.history.back()} />
+        <Album
+          code={session.code}
+          name={album.name}
+          viewer={session.name}
+          own={sameName(album.name, session.name)}
+          count={album.count}
+          onChanged={() => void feed.refresh()}
+          onClose={() => window.history.back()}
+        />
       )}
 
       {textOpen && (
