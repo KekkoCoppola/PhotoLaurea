@@ -6,7 +6,7 @@ import { expect, test } from 'vitest'
 
 const ctx = {}
 runInNewContext(readFileSync(new URL('../src/lib.js', import.meta.url), 'utf8'), ctx)
-const { normalizeName, nameKey, buildDriveFileName, buildAvatarFileName, uploadMeta, isValidCode, summarizeUsers, albumItems, pickAvatar } = ctx
+const { normalizeName, nameKey, buildDriveFileName, buildAvatarFileName, uploadMeta, isValidCode, summarizeUsers, albumItems, pickAvatar, isServableVoice, isPrivate, canManage } = ctx
 
 test('normalizeName pulisce', () => {
   expect(normalizeName('  Paolo   Rossi ')).toBe('Paolo Rossi')
@@ -174,4 +174,57 @@ test('albumItems: testi e note vocali', () => {
     { id: 't2', mimeType: 'text/plain', kind: 'text', ratio: 1.35, text: 'x'.repeat(300) },
     { id: 'v1', mimeType: 'audio/mp4', kind: 'voice', ratio: 1, durationMs: 42318 },
   ])
+})
+
+test('isServableVoice: solo note vocali nelle cartelle ospiti, sotto il limite', () => {
+  const voice = { parents: ['guest'], appProperties: { photolaurea: 'voice' }, size: '58356' }
+  const guest = { parents: ['root'] }
+  expect(isServableVoice(voice, guest, 'root', 15e6)).toBe(true)
+  expect(isServableVoice({ ...voice, appProperties: {} }, guest, 'root', 15e6)).toBe(false) // foto o altro
+  expect(isServableVoice({ ...voice, appProperties: { photolaurea: 'text' } }, guest, 'root', 15e6)).toBe(false)
+  expect(isServableVoice(voice, { parents: ['altro'] }, 'root', 15e6)).toBe(false) // fuori da Laurea/
+  expect(isServableVoice({ ...voice, size: '20000000' }, guest, 'root', 15e6)).toBe(false) // troppo grande
+  expect(isServableVoice(voice, null, 'root', 15e6)).toBe(false)
+  expect(isServableVoice(voice, guest, '', 15e6)).toBe(false)
+})
+
+const priv = { appProperties: { photolaurea: 'text', visibility: 'private' } }
+
+test('isPrivate: solo con visibility private', () => {
+  expect(isPrivate(priv)).toBe(true)
+  expect(isPrivate({ appProperties: { visibility: 'all' } })).toBe(false)
+  expect(isPrivate({})).toBe(false)
+})
+
+test('summarizeUsers: gli elementi "solo io e Kekko" non arrivano in home', () => {
+  const users = summarizeUsers([{ id: 'f', name: 'Anna' }], [
+    { id: 'pub', parents: ['f'], createdTime: '2026-11-20T10:00:00Z', mimeType: 'image/jpeg' },
+    { id: 'hid', parents: ['f'], createdTime: '2026-11-20T11:00:00Z', mimeType: 'image/jpeg', appProperties: { visibility: 'private' } },
+  ], 4)
+  expect(users[0].count).toBe(1)
+  expect(users[0].lastUpload).toBe('2026-11-20T10:00:00Z')
+  expect(users[0].recent.map(r => r.id)).toEqual(['pub'])
+  // solo elementi nascosti: l'ospite non compare in home
+  expect(summarizeUsers([{ id: 'g', name: 'Bea' }], [
+    { id: 'h', parents: ['g'], createdTime: '2026-11-20T10:00:00Z', mimeType: 'image/jpeg', appProperties: { visibility: 'private' } },
+  ], 4)).toEqual([])
+})
+
+test('albumItems: nascosti solo per il proprietario, e segnati', () => {
+  const files = [
+    { id: 'pub', createdTime: '2026-11-20T10:00:00Z', mimeType: 'image/jpeg' },
+    { id: 'hid', createdTime: '2026-11-20T11:00:00Z', mimeType: 'text/plain', description: 'ciao', ...priv },
+  ]
+  expect(albumItems(files).map(i => i.id)).toEqual(['pub'])
+  const own = JSON.parse(JSON.stringify(albumItems(files, true)))
+  expect(own.map(i => [i.id, i.visibility])).toEqual([['hid', 'private'], ['pub', undefined]])
+})
+
+test('canManage: solo i file nella propria cartella, sotto la radice dell’evento', () => {
+  const folder = { name: 'Francesco Coppola', parents: ['root'] }
+  expect(canManage(folder, 'root', 'francesco  coppola')).toBe(true)
+  expect(canManage(folder, 'root', 'Giulia')).toBe(false)
+  expect(canManage({ ...folder, parents: ['altro'] }, 'root', 'Francesco Coppola')).toBe(false)
+  expect(canManage(null, 'root', 'Francesco Coppola')).toBe(false)
+  expect(canManage(folder, 'root', '')).toBe(false)
 })

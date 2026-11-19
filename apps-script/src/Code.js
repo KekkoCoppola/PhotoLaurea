@@ -60,11 +60,13 @@ var ACTIONS_ = {
     return data;
   },
   // One guest's whole album, newest first, with sizes for the two-column grid.
+  // req.viewer: who is looking. The owner also gets the items hidden as "Solo io e Kekko".
   album: function (req) {
     var key = nameKey(req.name);
     if (!key) throw apiError_('BAD_NAME');
+    var own = nameKey(req.viewer) === key;
     var cache = CacheService.getScriptCache();
-    var cacheKey = 'album:' + key;
+    var cacheKey = albumCacheKey_(key, own);
     var hit = cache.get(cacheKey);
     if (hit) return JSON.parse(hit);
     var folder = guestFolders_().filter(function (f) { return nameKey(f.name) === key; })[0];
@@ -73,7 +75,7 @@ var ACTIONS_ = {
       data.items = albumItems(driveList_(
         "'" + folder.id + "' in parents and mimeType != 'application/vnd.google-apps.folder' and trashed = false",
         'files(id,createdTime,mimeType,appProperties,description,imageMediaMetadata(width,height,rotation),videoMediaMetadata(width,height))'
-      ));
+      ), own);
     }
     try {
       cache.put(cacheKey, JSON.stringify(data), FEED_CACHE_SECONDS_);
@@ -81,6 +83,32 @@ var ACTIONS_ = {
       // over the 100 KB cache limit: serve uncached
     }
     return data;
+  },
+  // Owner only: "all" (default) or "private" (= Solo io e Kekko: hidden from home and others).
+  setVisibility: function (req) {
+    var target = ownedFile_(req);
+    var visibility = req.visibility === 'private' ? 'private' : null; // null removes the property
+    driveUpdate_(target.id, { appProperties: { visibility: visibility } });
+    forgetGuestCaches_(target.folder.name);
+    return { id: target.id, visibility: visibility || 'all' };
+  },
+  // Owner only: moves the file to the Drive trash (Kekko can still restore it for 30 days).
+  deleteItem: function (req) {
+    var target = ownedFile_(req);
+    driveUpdate_(target.id, { trashed: true });
+    forgetGuestCaches_(target.folder.name);
+    return { id: target.id };
+  },
+  // Voice note bytes, base64. Drive blocks playing its files inside other sites, so the
+  // app plays them from here. Only voice notes in guest folders (see isServableVoice).
+  media: function (req) {
+    var id = String(req.id || '');
+    if (!/^[A-Za-z0-9_-]{10,}$/.test(id)) throw apiError_('BAD_REQUEST');
+    var file = driveGet_(id, 'parents,mimeType,size,appProperties');
+    var parent = file && file.parents && file.parents[0] ? driveGet_(file.parents[0], 'parents') : null;
+    if (!isServableVoice(file, parent, prop_('ROOT_FOLDER_ID'), MEDIA_MAX_BYTES_)) throw apiError_('BAD_REQUEST');
+    var bytes = DriveApp.getFileById(id).getBlob().getBytes();
+    return { mimeType: file.mimeType, data: Utilities.base64Encode(bytes) };
   },
   startUpload: function (req) {
     var folder = resolveUserFolder_(req.name);
@@ -117,6 +145,58 @@ var ACTIONS_ = {
 var FEED_RECENT_ = 4; // 3 visible cards + 1 blurred "+N" card
 var FEED_CACHE_SECONDS_ = 20;
 var FEED_FOLDERS_PER_QUERY_ = 40; // keeps the Drive q string well under its length limit
+
+var MEDIA_MAX_BYTES_ = 15 * 1024 * 1024;
+
+function albumCacheKey_(key, own) {
+  return 'album:' + key + (own ? ':own' : '');
+}
+
+// The file named in req.id, checked to sit in the requester's own folder (req.name).
+function ownedFile_(req) {
+  var id = String(req.id || '');
+  if (!/^[A-Za-z0-9_-]{10,}$/.test(id)) throw apiError_('BAD_REQUEST');
+  var file = driveGet_(id, 'id,parents,trashed');
+  if (!file || file.trashed || !file.parents || !file.parents[0]) throw apiError_('FORBIDDEN');
+  var folder = driveGet_(file.parents[0], 'name,parents');
+  if (!canManage(folder, prop_('ROOT_FOLDER_ID'), req.name)) throw apiError_('FORBIDDEN');
+  return { id: id, folder: folder };
+}
+
+// Drive v3 files.update (metadata only).
+function driveUpdate_(id, body) {
+  var res = UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(id) + '?fields=id', {
+    method: 'patch',
+    contentType: 'application/json',
+    payload: JSON.stringify(body),
+    headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() },
+    muteHttpExceptions: true,
+  });
+  if (res.getResponseCode() !== 200) {
+    console.error('files.update failed: ' + res.getResponseCode() + ' ' + res.getContentText());
+    throw apiError_('UPSTREAM');
+  }
+}
+
+// After a change, the home and both views of that guest's album must not serve stale data.
+function forgetGuestCaches_(guestName) {
+  var key = nameKey(guestName);
+  CacheService.getScriptCache().removeAll(['feed', albumCacheKey_(key, false), albumCacheKey_(key, true)]);
+}
+
+// Drive v3 files.get metadata, or null if the file does not exist / is not visible.
+function driveGet_(id, fields) {
+  var res = UrlFetchApp.fetch(
+    'https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(id) + '?fields=' + encodeURIComponent(fields),
+    { headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() }, muteHttpExceptions: true }
+  );
+  if (res.getResponseCode() === 404) return null;
+  if (res.getResponseCode() !== 200) {
+    console.error('files.get failed: ' + res.getResponseCode() + ' ' + res.getContentText());
+    throw apiError_('UPSTREAM');
+  }
+  return JSON.parse(res.getContentText());
+}
 
 // Laurea/<guest> folders, read-only (never creates one).
 function guestFolders_() {

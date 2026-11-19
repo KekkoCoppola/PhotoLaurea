@@ -77,6 +77,11 @@ function isAvatarFile(file) {
   return tagOf(file) === 'avatar';
 }
 
+// "Solo io e Kekko": kept on Drive, left out of the home and of other guests' view of the album.
+function isPrivate(file) {
+  return Boolean(file.appProperties && file.appProperties.visibility === 'private');
+}
+
 // photo | video | text | voice
 function itemKind(file) {
   var tag = tagOf(file);
@@ -95,6 +100,7 @@ function textRatio(text) {
 function toItem(f) {
   var kind = itemKind(f);
   var item = { id: f.id, mimeType: f.mimeType, kind: kind };
+  if (isPrivate(f)) item.visibility = 'private';
   if (kind === 'text') {
     item.ratio = textRatio(f.description);
     item.text = f.description || '';
@@ -119,7 +125,7 @@ function pickAvatar(files) {
   files.forEach(function (f) {
     if (isAvatarFile(f)) {
       if (!marked || f.createdTime > marked.createdTime) marked = f;
-    } else if (/^image\//.test(f.mimeType || '')) {
+    } else if (/^image\//.test(f.mimeType || '') && !isPrivate(f)) {
       if (!first || f.createdTime < first.createdTime) first = f;
     }
   });
@@ -138,8 +144,12 @@ function summarizeUsers(folders, files, recentLimit) {
   files.forEach(function (file) {
     var user = byFolder[(file.parents || [])[0]];
     if (!user) return;
-    user.files.push(file);
-    if (!isAvatarFile(file)) user.media.push(file);
+    if (isAvatarFile(file)) {
+      user.files.push(file);
+    } else if (!isPrivate(file)) {
+      user.files.push(file);
+      user.media.push(file);
+    }
   });
   return Object.keys(byFolder)
     .map(function (id) { return byFolder[id]; })
@@ -162,9 +172,28 @@ var DEFAULT_RATIO = 1.25; // 4:5 portrait while Drive has not read the file's si
 // One guest's album: newest first, profile photos left out.
 // ratio = height / width as displayed (quarter-turn EXIF rotation swaps the sides),
 // so the client can lay out the grid before any thumbnail loads.
-function albumItems(files) {
+// includePrivate: the owner looking at their own album also sees what they hid.
+function albumItems(files, includePrivate) {
   return files
-    .filter(function (f) { return !isAvatarFile(f); })
+    .filter(function (f) { return !isAvatarFile(f) && (includePrivate || !isPrivate(f)); })
     .sort(function (a, b) { return a.createdTime < b.createdTime ? 1 : a.createdTime > b.createdTime ? -1 : 0; })
     .map(toItem);
+}
+
+// The app may stream a file through the backend only if it is a voice note sitting in a
+// guest folder directly under the event root, and small enough for one response.
+// file / parentFolder: Drive v3 metadata ({ parents, appProperties, size }).
+function isServableVoice(file, parentFolder, rootId, maxBytes) {
+  if (!file || !parentFolder || !rootId) return false;
+  if (tagOf(file) !== 'voice') return false;
+  if ((parentFolder.parents || []).indexOf(rootId) === -1) return false;
+  return Number(file.size) > 0 && Number(file.size) <= maxBytes;
+}
+
+// A guest may change or delete only files in their own folder (same name, ignoring case),
+// and only inside the event root. folder: Drive v3 metadata ({ name, parents }).
+function canManage(folder, rootId, requesterName) {
+  if (!folder || !rootId || !nameKey(requesterName)) return false;
+  if ((folder.parents || []).indexOf(rootId) === -1) return false;
+  return nameKey(folder.name) === nameKey(requesterName);
 }
