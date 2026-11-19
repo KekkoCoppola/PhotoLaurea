@@ -38,9 +38,13 @@ export default function App() {
     setLoggingIn(true)
     const trimmed = code.trim()
     try {
-      const data = await callApi<{ name: string; folderId: string }>('login', { code: trimmed, name: name.trim() })
+      const data = await callApi<{ name: string; folderId: string; avatarId?: string | null }>('login', {
+        code: trimmed,
+        name: name.trim(),
+      })
       rememberCode(trimmed)
-      setSession({ code: trimmed, name: data.name })
+      // Returning guest with photos already: skip the selfie.
+      setSession(data.avatarId ? { code: trimmed, name: data.name, avatarId: data.avatarId } : { code: trimmed, name: data.name })
     } catch (e) {
       if (e instanceof ApiError && e.code === 'BAD_CODE') setShowCode(true)
       setLoginError(loginMessage(e))

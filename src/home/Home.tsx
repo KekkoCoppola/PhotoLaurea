@@ -149,7 +149,8 @@ export default function Home({ session }: { session: Session }) {
       <input
         ref={fileRef}
         type="file"
-        accept="image/*,video/*"
+        // A single type: Android Chrome opens the camera only when accept is not mixed.
+        accept="image/*"
         capture="environment"
         hidden
         onChange={e => { uploads.add(Array.from(e.target.files ?? [])); e.target.value = '' }}

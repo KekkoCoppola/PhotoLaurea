@@ -51,6 +51,25 @@ function isValidCode(given, expected) {
   return String(given == null ? '' : given).trim().toUpperCase() === e;
 }
 
+function isAvatarFile(file) {
+  return Boolean(file.appProperties && file.appProperties.photolaurea === 'avatar');
+}
+
+// Profile photo of a guest folder: the newest photo marked as profile; if none, the first photo
+// the guest ever uploaded (returning guests and uploads made before profiles existed); else null.
+function pickAvatar(files) {
+  var marked = null;
+  var first = null;
+  files.forEach(function (f) {
+    if (isAvatarFile(f)) {
+      if (!marked || f.createdTime > marked.createdTime) marked = f;
+    } else if (/^image\//.test(f.mimeType || '')) {
+      if (!first || f.createdTime < first.createdTime) first = f;
+    }
+  });
+  return marked ? marked.id : first ? first.id : null;
+}
+
 // Home feed: one entry per guest folder that has at least one photo/video.
 // folders: [{id, name}]; files: Drive v3 [{id, parents, createdTime, mimeType, appProperties}].
 // Profile photos never count as gallery items; the newest one becomes avatarId.
@@ -58,20 +77,13 @@ function isValidCode(given, expected) {
 function summarizeUsers(folders, files, recentLimit) {
   var byFolder = {};
   folders.forEach(function (f) {
-    byFolder[f.id] = { name: f.name, avatarId: null, avatarTime: '', media: [] };
+    byFolder[f.id] = { name: f.name, files: [], media: [] };
   });
   files.forEach(function (file) {
     var user = byFolder[(file.parents || [])[0]];
     if (!user) return;
-    var isAvatar = file.appProperties && file.appProperties.photolaurea === 'avatar';
-    if (isAvatar) {
-      if (file.createdTime > user.avatarTime) {
-        user.avatarId = file.id;
-        user.avatarTime = file.createdTime;
-      }
-    } else {
-      user.media.push(file);
-    }
+    user.files.push(file);
+    if (!isAvatarFile(file)) user.media.push(file);
   });
   return Object.keys(byFolder)
     .map(function (id) { return byFolder[id]; })
@@ -80,7 +92,7 @@ function summarizeUsers(folders, files, recentLimit) {
       u.media.sort(function (a, b) { return a.createdTime < b.createdTime ? 1 : a.createdTime > b.createdTime ? -1 : 0; });
       return {
         name: u.name,
-        avatarId: u.avatarId,
+        avatarId: pickAvatar(u.files),
         count: u.media.length,
         lastUpload: u.media[0].createdTime,
         recent: u.media.slice(0, recentLimit).map(function (m) { return { id: m.id, mimeType: m.mimeType }; }),
@@ -96,7 +108,7 @@ var DEFAULT_RATIO = 1.25; // 4:5 portrait while Drive has not read the file's si
 // so the client can lay out the grid before any thumbnail loads.
 function albumItems(files) {
   return files
-    .filter(function (f) { return !(f.appProperties && f.appProperties.photolaurea === 'avatar'); })
+    .filter(function (f) { return !isAvatarFile(f); })
     .sort(function (a, b) { return a.createdTime < b.createdTime ? 1 : a.createdTime > b.createdTime ? -1 : 0; })
     .map(function (f) {
       var meta = f.imageMediaMetadata || f.videoMediaMetadata || {};

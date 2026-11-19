@@ -6,7 +6,7 @@ import { expect, test } from 'vitest'
 
 const ctx = {}
 runInNewContext(readFileSync(new URL('../src/lib.js', import.meta.url), 'utf8'), ctx)
-const { normalizeName, nameKey, buildDriveFileName, buildAvatarFileName, uploadMeta, isValidCode, summarizeUsers, albumItems } = ctx
+const { normalizeName, nameKey, buildDriveFileName, buildAvatarFileName, uploadMeta, isValidCode, summarizeUsers, albumItems, pickAvatar } = ctx
 
 test('normalizeName pulisce', () => {
   expect(normalizeName('  Paolo   Rossi ')).toBe('Paolo Rossi')
@@ -101,11 +101,35 @@ test('summarizeUsers: per ospite foto recenti, conteggio, ultimo caricamento, av
   ])
 })
 
-test('summarizeUsers: ospite senza avatar ha avatarId null', () => {
+test('summarizeUsers: ospite senza foto profilo usa la sua prima foto', () => {
   const users = summarizeUsers([{ id: 'f', name: 'Dario' }], [
+    { id: 'd2', parents: ['f'], createdTime: '2026-11-20T11:00:00Z', mimeType: 'image/png' },
     { id: 'd1', parents: ['f'], createdTime: '2026-11-20T10:00:00Z', mimeType: 'image/png' },
   ], 4)
+  expect(users[0].avatarId).toBe('d1')
+})
+
+test('summarizeUsers: solo video, nessuna foto profilo', () => {
+  const users = summarizeUsers([{ id: 'f', name: 'Ezio' }], [
+    { id: 'v1', parents: ['f'], createdTime: '2026-11-20T10:00:00Z', mimeType: 'video/mp4' },
+  ], 4)
   expect(users[0].avatarId).toBeNull()
+})
+
+test('pickAvatar: foto profilo marcata più recente, altrimenti prima foto, altrimenti null', () => {
+  const av = { appProperties: { photolaurea: 'avatar' } }
+  expect(pickAvatar([
+    { id: 'p1', createdTime: '2026-11-20T09:00:00Z', mimeType: 'image/jpeg' },
+    { id: 'avOld', createdTime: '2026-11-20T10:00:00Z', mimeType: 'image/jpeg', ...av },
+    { id: 'avNew', createdTime: '2026-11-20T11:00:00Z', mimeType: 'image/jpeg', ...av },
+  ])).toBe('avNew')
+  expect(pickAvatar([
+    { id: 'vid', createdTime: '2026-11-20T08:00:00Z', mimeType: 'video/mp4' },
+    { id: 'second', createdTime: '2026-11-20T10:00:00Z', mimeType: 'image/jpeg' },
+    { id: 'first', createdTime: '2026-11-20T09:00:00Z', mimeType: 'image/heic' },
+  ])).toBe('first')
+  expect(pickAvatar([{ id: 'vid', createdTime: '2026-11-20T08:00:00Z', mimeType: 'video/mp4' }])).toBeNull()
+  expect(pickAvatar([])).toBeNull()
 })
 
 test('albumItems: niente avatar, più recenti prima, proporzioni dalle dimensioni', () => {

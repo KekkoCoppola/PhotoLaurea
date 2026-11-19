@@ -26,9 +26,14 @@ var ACTIONS_ = {
   ping: function () {
     return { pong: true };
   },
+  // Returning guest: an existing photo becomes the profile photo, so the selfie is asked only once.
   login: function (req) {
     var folder = resolveUserFolder_(req.name);
-    return { name: folder.getName(), folderId: folder.getId() };
+    var files = driveList_(
+      "'" + folder.getId() + "' in parents and mimeType != 'application/vnd.google-apps.folder' and trashed = false",
+      'files(id,createdTime,mimeType,appProperties)'
+    );
+    return { name: folder.getName(), folderId: folder.getId(), avatarId: pickAvatar(files) };
   },
   // Home: every guest's latest photos. Cached briefly so a room full of phones polling stays cheap.
   feed: function () {
