@@ -231,6 +231,8 @@ function driveList_(q, fields) {
 }
 
 // Find Laurea/<name> ignoring case, or create it. Script lock avoids duplicates on concurrent logins.
+// Folders in the Drive trash do not count (DriveApp lists them too): a guest whose folder was
+// deleted gets a fresh one instead of uploading into the trash.
 function resolveUserFolder_(rawName) {
   var name = normalizeName(rawName);
   if (!name) throw apiError_('BAD_NAME');
@@ -242,7 +244,7 @@ function resolveUserFolder_(rawName) {
     var it = root.getFolders();
     while (it.hasNext()) {
       var f = it.next();
-      if (nameKey(f.getName()) === key) return f;
+      if (!f.isTrashed() && nameKey(f.getName()) === key) return f;
     }
     return root.createFolder(name);
   } finally {
