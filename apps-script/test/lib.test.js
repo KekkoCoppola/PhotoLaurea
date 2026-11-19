@@ -6,7 +6,7 @@ import { expect, test } from 'vitest'
 
 const ctx = {}
 runInNewContext(readFileSync(new URL('../src/lib.js', import.meta.url), 'utf8'), ctx)
-const { normalizeName, nameKey, buildDriveFileName, buildAvatarFileName, uploadMeta, isValidCode, summarizeUsers, albumItems, pickAvatar, isServableVoice, isPrivate, canManage } = ctx
+const { normalizeName, nameKey, buildDriveFileName, buildAvatarFileName, uploadMeta, isValidCode, summarizeUsers, albumItems, pickAvatar, isServableVoice, isPrivate, canManage, avatarPresetOf, findGuestFolder } = ctx
 
 test('normalizeName pulisce', () => {
   expect(normalizeName('  Paolo   Rossi ')).toBe('Paolo Rossi')
@@ -80,6 +80,7 @@ test('summarizeUsers: per ospite foto recenti, conteggio, ultimo caricamento, av
     {
       name: 'Bruno',
       avatarId: 'bAvNew',
+      avatarPreset: null,
       count: 5,
       lastUpload: '2026-11-20T12:04:00Z',
       recent: [
@@ -92,6 +93,7 @@ test('summarizeUsers: per ospite foto recenti, conteggio, ultimo caricamento, av
     {
       name: 'Anna',
       avatarId: 'aAv',
+      avatarPreset: null,
       count: 2,
       lastUpload: '2026-11-20T11:00:00Z',
       recent: [
@@ -227,4 +229,30 @@ test('canManage: solo i file nella propria cartella, sotto la radice dell’even
   expect(canManage({ ...folder, parents: ['altro'] }, 'root', 'Francesco Coppola')).toBe(false)
   expect(canManage(null, 'root', 'Francesco Coppola')).toBe(false)
   expect(canManage(folder, 'root', '')).toBe(false)
+})
+
+test('avatarPresetOf: solo avatar del sito 1–6, altrimenti null', () => {
+  expect(avatarPresetOf({ appProperties: { avatarPreset: '3' } })).toBe('3')
+  expect(avatarPresetOf({ appProperties: { avatarPreset: '7' } })).toBeNull()
+  expect(avatarPresetOf({ appProperties: { avatarPreset: 'x' } })).toBeNull()
+  expect(avatarPresetOf({})).toBeNull()
+  expect(avatarPresetOf(null)).toBeNull()
+})
+
+test('summarizeUsers: avatar scelto tra quelli del sito', () => {
+  const users = summarizeUsers([{ id: 'f', name: 'Anna', appProperties: { avatarPreset: '5' } }], [
+    { id: 'p1', parents: ['f'], createdTime: '2026-11-20T10:00:00Z', mimeType: 'image/jpeg' },
+  ], 4)
+  expect(users[0].avatarPreset).toBe('5')
+  const plain = summarizeUsers([{ id: 'g', name: 'Bea' }], [
+    { id: 'p2', parents: ['g'], createdTime: '2026-11-20T10:00:00Z', mimeType: 'image/jpeg' },
+  ], 4)
+  expect(plain[0].avatarPreset).toBeNull()
+})
+
+test('findGuestFolder: per nome ignorando maiuscole, null se non c’è', () => {
+  const folders = [{ id: 'a', name: 'Anna' }, { id: 'f', name: 'Francesco Coppola' }]
+  expect(findGuestFolder(folders, 'francesco  COPPOLA').id).toBe('f')
+  expect(findGuestFolder(folders, 'Giulia')).toBeNull()
+  expect(findGuestFolder(folders, '')).toBeNull()
 })

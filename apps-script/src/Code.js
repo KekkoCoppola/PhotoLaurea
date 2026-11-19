@@ -33,7 +33,22 @@ var ACTIONS_ = {
       "'" + folder.getId() + "' in parents and mimeType != 'application/vnd.google-apps.folder' and trashed = false",
       'files(id,createdTime,mimeType,appProperties)'
     );
-    return { name: folder.getName(), folderId: folder.getId(), avatarId: pickAvatar(files) };
+    var meta = driveGet_(folder.getId(), 'appProperties');
+    return { name: folder.getName(), folderId: folder.getId(), avatarId: pickAvatar(files), avatarPreset: avatarPresetOf(meta) };
+  },
+  // Is this guest's folder still there? Never creates it: a deleted folder logs the guest out.
+  whoami: function (req) {
+    var folder = findGuestFolder(guestFolders_(), req.name);
+    return folder ? { exists: true, name: folder.name, avatarPreset: avatarPresetOf(folder) } : { exists: false };
+  },
+  // The guest picks one of the site's avatars instead of a selfie (stored on their folder).
+  setAvatarPreset: function (req) {
+    var preset = avatarPresetOf({ appProperties: { avatarPreset: req.preset } });
+    if (!preset) throw apiError_('BAD_REQUEST');
+    var folder = resolveUserFolder_(req.name);
+    driveUpdate_(folder.getId(), { appProperties: { avatarPreset: preset } });
+    forgetGuestCaches_(folder.getName());
+    return { avatarPreset: preset };
   },
   // Home: every guest's latest photos. Cached briefly so a room full of phones polling stays cheap.
   feed: function () {
@@ -69,7 +84,7 @@ var ACTIONS_ = {
     var cacheKey = albumCacheKey_(key, own);
     var hit = cache.get(cacheKey);
     if (hit) return JSON.parse(hit);
-    var folder = guestFolders_().filter(function (f) { return nameKey(f.name) === key; })[0];
+    var folder = findGuestFolder(guestFolders_(), req.name);
     var data = { name: folder ? folder.name : normalizeName(req.name), items: [] };
     if (folder) {
       data.items = albumItems(driveList_(
@@ -114,6 +129,11 @@ var ACTIONS_ = {
     var folder = resolveUserFolder_(req.name);
     var size = Number(req.size);
     if (!req.fileName || !(size >= 0)) throw apiError_('BAD_REQUEST');
+    // A new selfie replaces a previously chosen site avatar.
+    if (req.kind === 'avatar') {
+      driveUpdate_(folder.getId(), { appProperties: { avatarPreset: null } });
+      forgetGuestCaches_(folder.getName());
+    }
     var res = UrlFetchApp.fetch(
       'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id',
       {
@@ -202,7 +222,7 @@ function driveGet_(id, fields) {
 function guestFolders_() {
   return driveList_(
     "'" + prop_('ROOT_FOLDER_ID') + "' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false",
-    'files(id,name)'
+    'files(id,name,appProperties)'
   );
 }
 

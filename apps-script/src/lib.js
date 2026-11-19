@@ -139,7 +139,7 @@ function pickAvatar(files) {
 function summarizeUsers(folders, files, recentLimit) {
   var byFolder = {};
   folders.forEach(function (f) {
-    byFolder[f.id] = { name: f.name, files: [], media: [] };
+    byFolder[f.id] = { name: f.name, preset: avatarPresetOf(f), files: [], media: [] };
   });
   files.forEach(function (file) {
     var user = byFolder[(file.parents || [])[0]];
@@ -159,6 +159,7 @@ function summarizeUsers(folders, files, recentLimit) {
       return {
         name: u.name,
         avatarId: pickAvatar(u.files),
+        avatarPreset: u.preset,
         count: u.media.length,
         lastUpload: u.media[0].createdTime,
         recent: u.media.slice(0, recentLimit).map(toItem),
@@ -196,4 +197,19 @@ function canManage(folder, rootId, requesterName) {
   if (!folder || !rootId || !nameKey(requesterName)) return false;
   if ((folder.parents || []).indexOf(rootId) === -1) return false;
   return nameKey(folder.name) === nameKey(requesterName);
+}
+
+var AVATAR_PRESETS = ['1', '2', '3', '4', '5', '6'];
+
+// Avatar picked among the site's drawings, stored on the guest folder (appProperties.avatarPreset).
+function avatarPresetOf(folder) {
+  var v = folder && folder.appProperties && folder.appProperties.avatarPreset;
+  return AVATAR_PRESETS.indexOf(String(v)) === -1 ? null : String(v);
+}
+
+// The guest's folder among the event folders, by name ignoring case; null if there is none.
+function findGuestFolder(folders, name) {
+  var key = nameKey(name);
+  if (!key) return null;
+  return folders.filter(function (f) { return nameKey(f.name) === key; })[0] || null;
 }
