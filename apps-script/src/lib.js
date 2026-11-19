@@ -50,3 +50,60 @@ function isValidCode(given, expected) {
   if (!e) return false;
   return String(given == null ? '' : given).trim().toUpperCase() === e;
 }
+
+// Home feed: one entry per guest folder that has at least one photo/video.
+// folders: [{id, name}]; files: Drive v3 [{id, parents, createdTime, mimeType, appProperties}].
+// Profile photos never count as gallery items; the newest one becomes avatarId.
+// Sorted by most recent upload first. createdTime is RFC 3339 UTC, so string order = time order.
+function summarizeUsers(folders, files, recentLimit) {
+  var byFolder = {};
+  folders.forEach(function (f) {
+    byFolder[f.id] = { name: f.name, avatarId: null, avatarTime: '', media: [] };
+  });
+  files.forEach(function (file) {
+    var user = byFolder[(file.parents || [])[0]];
+    if (!user) return;
+    var isAvatar = file.appProperties && file.appProperties.photolaurea === 'avatar';
+    if (isAvatar) {
+      if (file.createdTime > user.avatarTime) {
+        user.avatarId = file.id;
+        user.avatarTime = file.createdTime;
+      }
+    } else {
+      user.media.push(file);
+    }
+  });
+  return Object.keys(byFolder)
+    .map(function (id) { return byFolder[id]; })
+    .filter(function (u) { return u.media.length > 0; })
+    .map(function (u) {
+      u.media.sort(function (a, b) { return a.createdTime < b.createdTime ? 1 : a.createdTime > b.createdTime ? -1 : 0; });
+      return {
+        name: u.name,
+        avatarId: u.avatarId,
+        count: u.media.length,
+        lastUpload: u.media[0].createdTime,
+        recent: u.media.slice(0, recentLimit).map(function (m) { return { id: m.id, mimeType: m.mimeType }; }),
+      };
+    })
+    .sort(function (a, b) { return a.lastUpload < b.lastUpload ? 1 : a.lastUpload > b.lastUpload ? -1 : 0; });
+}
+
+var DEFAULT_RATIO = 1.25; // 4:5 portrait while Drive has not read the file's size yet
+
+// One guest's album: newest first, profile photos left out.
+// ratio = height / width as displayed (quarter-turn EXIF rotation swaps the sides),
+// so the client can lay out the grid before any thumbnail loads.
+function albumItems(files) {
+  return files
+    .filter(function (f) { return !(f.appProperties && f.appProperties.photolaurea === 'avatar'); })
+    .sort(function (a, b) { return a.createdTime < b.createdTime ? 1 : a.createdTime > b.createdTime ? -1 : 0; })
+    .map(function (f) {
+      var meta = f.imageMediaMetadata || f.videoMediaMetadata || {};
+      var w = Number(meta.width);
+      var h = Number(meta.height);
+      if (meta.rotation % 2 === 1) { var t = w; w = h; h = t; }
+      var ratio = w > 0 && h > 0 ? Math.round((h / w) * 10000) / 10000 : DEFAULT_RATIO;
+      return { id: f.id, mimeType: f.mimeType, ratio: ratio };
+    });
+}

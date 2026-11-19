@@ -1,0 +1,182 @@
+.album {
+  --album-bg: #17141c;
+  --album-ink: #f5f5f7;
+  --album-soft: rgb(245 245 247 / 0.6);
+  --album-glass: rgb(255 255 255 / 0.08);
+  --album-edge: rgb(255 255 255 / 0.16);
+
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  background:
+    radial-gradient(120% 60% at 50% 0%, #3a2840 0%, transparent 60%),
+    var(--album-bg);
+  color: var(--album-ink);
+  animation: album-in 320ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* ---------- header ---------- */
+.album-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: max(16px, env(safe-area-inset-top)) 16px 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: linear-gradient(to bottom, rgb(23 20 28 / 0.92) 55%, rgb(23 20 28 / 0));
+}
+
+.album-back,
+.album-head__spacer {
+  flex: none;
+  width: 52px;
+  height: 52px;
+}
+
+.album-back {
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--album-edge);
+  border-radius: 18px;
+  background: var(--album-glass);
+  color: var(--album-ink);
+  cursor: pointer;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 120ms ease, background-color 150ms ease;
+}
+
+.album-back:active {
+  transform: scale(0.94);
+  background: rgb(255 255 255 / 0.14);
+}
+
+.album-back:focus-visible {
+  outline: 3px solid rgb(255 255 255 / 0.5);
+  outline-offset: 3px;
+}
+
+.album-head__text {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+}
+
+.album-head__text h1 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.album-head__text p {
+  margin: 3px 0 0;
+  font-size: 15px;
+  color: var(--album-soft);
+}
+
+/* ---------- grid ---------- */
+.album-grid {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 0 10px calc(24px + env(safe-area-inset-bottom));
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.album-col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.album-tile {
+  position: relative;
+  width: 100%;
+  border-radius: 26px;
+  overflow: hidden;
+  background: rgb(255 255 255 / 0.06);
+}
+
+.album-tile img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.album-tile--ghost {
+  animation: album-pulse 1.2s ease-in-out infinite alternate;
+}
+
+.album-tile__play {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--album-edge);
+  background: rgb(0 0 0 / 0.35);
+  color: #fff;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* ---------- messages ---------- */
+.album-message {
+  min-height: 50dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--album-soft);
+  font-size: 17px;
+  text-align: center;
+}
+
+.album-message p {
+  margin: 0;
+}
+
+.album-message button {
+  margin-top: 10px;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 0;
+  background: none;
+  color: var(--album-ink);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+@keyframes album-in {
+  from { opacity: 0; transform: translateY(24px); }
+}
+@keyframes album-pulse {
+  to { opacity: 0.5; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .album,
+  .album-tile--ghost {
+    animation: none;
+  }
+}

@@ -1,46 +1,14 @@
-// Onboarding (welcome → name → profile photo), then the phase A test upload screen.
-import { useEffect, useState } from 'react'
+// Onboarding (welcome → name → profile photo), then the home with everyone's photos.
+// The session is kept on the phone, so reopening the link goes straight to the home.
+import { useState } from 'react'
 import { ApiError, callApi } from './api/client'
-import { thumbnailUrl, videoPreviewUrl } from './drive/urls'
-import { UploadError, uploadResumable } from './upload/resumable'
+import Home from './home/Home'
 import { initialCode, rememberCode } from './session/eventCode'
+import { loadSession, saveSession, type Session } from './session/session'
+import { sendFile } from './upload/sendFile'
 import NameStep from './welcome/NameStep'
 import ProfileStep from './welcome/ProfileStep'
 import Welcome from './welcome/Welcome'
-
-type Session = { code: string; name: string; avatarId?: string }
-type UploadKind = 'media' | 'avatar'
-type Item = {
-  key: string
-  file: File
-  status: 'in coda' | 'caricamento' | 'fatto' | 'errore'
-  sent: number
-  id?: string
-  error?: string
-}
-
-// One file to the user's Drive folder: ask the backend for a session URL, then push the bytes.
-async function sendFile(
-  session: Session,
-  file: Blob,
-  fileName: string,
-  kind: UploadKind,
-  onProgress?: (sent: number) => void,
-): Promise<string> {
-  const { uploadUrl } = await callApi<{ uploadUrl: string }>('startUpload', {
-    code: session.code,
-    name: session.name,
-    fileName,
-    mimeType: file.type || 'application/octet-stream',
-    size: file.size,
-    kind,
-  })
-  const { id } = await uploadResumable(uploadUrl, file, { onProgress })
-  return id
-}
-
-const errorText = (e: unknown) =>
-  e instanceof ApiError || e instanceof UploadError ? e.code : e instanceof Error ? e.message : String(e)
 
 function loginMessage(e: unknown): string {
   if (e instanceof ApiError) {
@@ -52,26 +20,18 @@ function loginMessage(e: unknown): string {
 }
 
 export default function App() {
-  const [welcomed, setWelcomed] = useState(false)
+  const [session, setSessionState] = useState<Session | null>(() => loadSession(initialCode()))
+  const [welcomed, setWelcomed] = useState(() => session !== null)
   const [code, setCode] = useState(initialCode)
   const [showCode, setShowCode] = useState(() => !initialCode())
   const [name, setName] = useState('')
-  const [session, setSession] = useState<Session | null>(null)
   const [loginError, setLoginError] = useState('')
   const [loggingIn, setLoggingIn] = useState(false)
-  const [items, setItems] = useState<Item[]>([])
 
-  const busy = items.some(i => i.status === 'in coda' || i.status === 'caricamento')
-
-  useEffect(() => {
-    if (!busy) return
-    const warn = (e: BeforeUnloadEvent) => e.preventDefault()
-    window.addEventListener('beforeunload', warn)
-    return () => window.removeEventListener('beforeunload', warn)
-  }, [busy])
-
-  const update = (key: string, patch: Partial<Item>) =>
-    setItems(prev => prev.map(i => (i.key === key ? { ...i, ...patch } : i)))
+  function setSession(next: Session) {
+    saveSession(next)
+    setSessionState(next)
+  }
 
   async function login() {
     setLoginError('')
@@ -86,21 +46,6 @@ export default function App() {
       setLoginError(loginMessage(e))
     } finally {
       setLoggingIn(false)
-    }
-  }
-
-  async function uploadAll(files: File[]) {
-    if (!session) return
-    const added = files.map(file => ({ key: `${Date.now()}-${Math.random()}`, file, status: 'in coda' as const, sent: 0 }))
-    setItems(prev => [...prev, ...added])
-    for (const item of added) {
-      update(item.key, { status: 'caricamento' })
-      try {
-        const id = await sendFile(session, item.file, item.file.name, 'media', sent => update(item.key, { sent }))
-        update(item.key, { status: 'fatto', id })
-      } catch (e) {
-        update(item.key, { status: 'errore', error: errorText(e) })
-      }
     }
   }
 
@@ -132,30 +77,5 @@ export default function App() {
     )
   }
 
-  return (
-    <main>
-      {busy && <p style={{ position: 'sticky', top: 0, background: '#ffd', padding: 8 }}>
-        Tieni aperta questa schermata finché non finisce
-      </p>}
-      <h1>Ciao {session.name}</h1>
-      <input
-        type="file"
-        multiple
-        accept="image/*,video/*"
-        onChange={e => { uploadAll(Array.from(e.target.files ?? [])); e.target.value = '' }}
-      />
-      <ul>
-        {items.map(i => (
-          <li key={i.key}>
-            {i.file.name} — {i.status} {i.error && `(${i.error})`}
-            <br />
-            <progress max={i.file.size || 1} value={i.status === 'fatto' ? i.file.size || 1 : i.sent} />
-            {i.id && (i.file.type.startsWith('video/')
-              ? <a href={videoPreviewUrl(i.id)} target="_blank" rel="noreferrer">apri video</a>
-              : <img src={thumbnailUrl(i.id)} alt={i.file.name} width={200} loading="lazy" />)}
-          </li>
-        ))}
-      </ul>
-    </main>
-  )
+  return <Home session={session} />
 }

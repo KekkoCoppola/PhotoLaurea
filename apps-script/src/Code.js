@@ -30,6 +30,53 @@ var ACTIONS_ = {
     var folder = resolveUserFolder_(req.name);
     return { name: folder.getName(), folderId: folder.getId() };
   },
+  // Home: every guest's latest photos. Cached briefly so a room full of phones polling stays cheap.
+  feed: function () {
+    var cache = CacheService.getScriptCache();
+    var hit = cache.get('feed');
+    if (hit) return JSON.parse(hit);
+    var folders = guestFolders_();
+    var files = [];
+    for (var i = 0; i < folders.length; i += FEED_FOLDERS_PER_QUERY_) {
+      var parentsQ = folders.slice(i, i + FEED_FOLDERS_PER_QUERY_)
+        .map(function (f) { return "'" + f.id + "' in parents"; })
+        .join(' or ');
+      files = files.concat(driveList_(
+        '(' + parentsQ + ") and mimeType != 'application/vnd.google-apps.folder' and trashed = false",
+        'files(id,parents,createdTime,mimeType,appProperties)'
+      ));
+    }
+    var data = { users: summarizeUsers(folders, files, FEED_RECENT_) };
+    try {
+      cache.put('feed', JSON.stringify(data), FEED_CACHE_SECONDS_);
+    } catch (err) {
+      // over the 100 KB cache limit: serve uncached
+    }
+    return data;
+  },
+  // One guest's whole album, newest first, with sizes for the two-column grid.
+  album: function (req) {
+    var key = nameKey(req.name);
+    if (!key) throw apiError_('BAD_NAME');
+    var cache = CacheService.getScriptCache();
+    var cacheKey = 'album:' + key;
+    var hit = cache.get(cacheKey);
+    if (hit) return JSON.parse(hit);
+    var folder = guestFolders_().filter(function (f) { return nameKey(f.name) === key; })[0];
+    var data = { name: folder ? folder.name : normalizeName(req.name), items: [] };
+    if (folder) {
+      data.items = albumItems(driveList_(
+        "'" + folder.id + "' in parents and mimeType != 'application/vnd.google-apps.folder' and trashed = false",
+        'files(id,createdTime,mimeType,appProperties,imageMediaMetadata(width,height,rotation),videoMediaMetadata(width,height))'
+      ));
+    }
+    try {
+      cache.put(cacheKey, JSON.stringify(data), FEED_CACHE_SECONDS_);
+    } catch (err) {
+      // over the 100 KB cache limit: serve uncached
+    }
+    return data;
+  },
   startUpload: function (req) {
     var folder = resolveUserFolder_(req.name);
     var size = Number(req.size);
@@ -61,6 +108,42 @@ var ACTIONS_ = {
     return { uploadUrl: location };
   },
 };
+
+var FEED_RECENT_ = 4; // 3 visible cards + 1 blurred "+N" card
+var FEED_CACHE_SECONDS_ = 20;
+var FEED_FOLDERS_PER_QUERY_ = 40; // keeps the Drive q string well under its length limit
+
+// Laurea/<guest> folders, read-only (never creates one).
+function guestFolders_() {
+  return driveList_(
+    "'" + prop_('ROOT_FOLDER_ID') + "' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false",
+    'files(id,name)'
+  );
+}
+
+// Drive v3 files.list with paging, as the script owner.
+function driveList_(q, fields) {
+  var out = [];
+  var pageToken = '';
+  do {
+    var url = 'https://www.googleapis.com/drive/v3/files?pageSize=1000' +
+      '&q=' + encodeURIComponent(q) +
+      '&fields=' + encodeURIComponent('nextPageToken,' + fields) +
+      (pageToken ? '&pageToken=' + encodeURIComponent(pageToken) : '');
+    var res = UrlFetchApp.fetch(url, {
+      headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() },
+      muteHttpExceptions: true,
+    });
+    if (res.getResponseCode() !== 200) {
+      console.error('files.list failed: ' + res.getResponseCode() + ' ' + res.getContentText());
+      throw apiError_('UPSTREAM');
+    }
+    var body = JSON.parse(res.getContentText());
+    out = out.concat(body.files || []);
+    pageToken = body.nextPageToken || '';
+  } while (pageToken);
+  return out;
+}
 
 // Find Laurea/<name> ignoring case, or create it. Script lock avoids duplicates on concurrent logins.
 function resolveUserFolder_(rawName) {
