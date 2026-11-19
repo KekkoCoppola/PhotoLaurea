@@ -1,0 +1,111 @@
+.welcome {
+  background: var(--bg);
+}
+
+/* ---------- photo stack ---------- */
+.welcome__stack {
+  position: relative;
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 340px;
+  max-height: 460px;
+  margin-top: 4vh;
+}
+
+.welcome__card {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: block;
+  object-fit: cover;
+  background: #e8e8ed;
+  border: 5px solid #fff;
+  border-radius: 30px;
+  box-shadow: 0 18px 40px -18px rgb(0 0 0 / 0.28), 0 2px 6px rgb(0 0 0 / 0.06);
+}
+
+.welcome__card--front {
+  z-index: 3;
+  width: min(62%, 270px);
+  aspect-ratio: 4 / 5;
+  transform: translate(-50%, -50%);
+  animation: welcome-front 700ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.welcome__card--left,
+.welcome__card--right {
+  width: min(52%, 230px);
+  aspect-ratio: 3 / 4;
+  filter: saturate(0.5) brightness(1.1);
+  opacity: 0.7;
+}
+
+.welcome__card--left {
+  z-index: 1;
+  transform: translate(-86%, -38%) rotate(-9deg);
+  animation: welcome-left 800ms 120ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.welcome__card--right {
+  z-index: 2;
+  transform: translate(-14%, -62%) rotate(9deg);
+  animation: welcome-right 800ms 180ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes welcome-front {
+  from { opacity: 0; transform: translate(-50%, -44%) scale(0.94); }
+}
+@keyframes welcome-left {
+  from { opacity: 0; transform: translate(-50%, -40%) rotate(0deg); }
+}
+@keyframes welcome-right {
+  from { opacity: 0; transform: translate(-50%, -60%) rotate(0deg); }
+}
+
+/* ---------- text ---------- */
+.welcome__text {
+  margin-top: 28px;
+  margin-bottom: 40px;
+  text-align: center;
+  animation: welcome-fade 600ms 260ms ease-out both;
+}
+
+.welcome__title {
+  margin: 0;
+  font-size: clamp(34px, 10vw, 44px);
+  line-height: 1.08;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  color: var(--ink-soft);
+}
+
+.welcome__title strong {
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.welcome__subtitle {
+  margin: 14px 0 0;
+  font-size: 17px;
+  line-height: 1.4;
+  color: var(--ink-muted);
+  text-wrap: balance;
+}
+
+/* ---------- button ---------- */
+.welcome__cta {
+  margin-top: auto;
+  animation: welcome-fade 600ms 360ms ease-out both;
+}
+
+@keyframes welcome-fade {
+  from { opacity: 0; transform: translateY(10px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .welcome__card,
+  .welcome__text,
+  .welcome__cta {
+    animation: none;
+  }
+}

@@ -1,0 +1,74 @@
+.name-step {
+  background: var(--bg);
+}
+
+/* Takes all free height so the field sits in the vertical middle */
+.name-step__center {
+  flex: 1 1 auto;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  animation: screen-fade 500ms ease-out both;
+}
+
+.name-step__title {
+  margin: 0 0 14px;
+  font-size: clamp(32px, 9vw, 40px);
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  text-align: center;
+}
+
+.name-step__input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 62px;
+  padding: 0 20px;
+  border: 1.5px solid var(--line);
+  border-radius: 18px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 22px;
+  font-weight: 500;
+  text-align: center;
+  letter-spacing: -0.01em;
+  box-shadow: 0 10px 30px -18px rgb(0 0 0 / 0.25);
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.name-step__input::placeholder {
+  color: #c3c3c8;
+}
+
+.name-step__input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.name-step__input--code {
+  min-height: 52px;
+  font-size: 17px;
+  letter-spacing: 0.04em;
+}
+
+.name-step__error {
+  min-height: 1.4em;
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--danger);
+  text-align: center;
+}
+
+.name-step__cta {
+  animation: screen-fade 500ms 120ms ease-out both;
+}

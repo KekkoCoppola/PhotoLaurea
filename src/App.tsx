@@ -1,11 +1,15 @@
-// Phase A test screen: native controls only. Real UI comes in phase F.
+// Onboarding (welcome → name → profile photo), then the phase A test upload screen.
 import { useEffect, useState } from 'react'
 import { ApiError, callApi } from './api/client'
 import { thumbnailUrl, videoPreviewUrl } from './drive/urls'
 import { UploadError, uploadResumable } from './upload/resumable'
 import { initialCode, rememberCode } from './session/eventCode'
+import NameStep from './welcome/NameStep'
+import ProfileStep from './welcome/ProfileStep'
+import Welcome from './welcome/Welcome'
 
-type Session = { code: string; name: string }
+type Session = { code: string; name: string; avatarId?: string }
+type UploadKind = 'media' | 'avatar'
 type Item = {
   key: string
   file: File
@@ -15,15 +19,46 @@ type Item = {
   error?: string
 }
 
+// One file to the user's Drive folder: ask the backend for a session URL, then push the bytes.
+async function sendFile(
+  session: Session,
+  file: Blob,
+  fileName: string,
+  kind: UploadKind,
+  onProgress?: (sent: number) => void,
+): Promise<string> {
+  const { uploadUrl } = await callApi<{ uploadUrl: string }>('startUpload', {
+    code: session.code,
+    name: session.name,
+    fileName,
+    mimeType: file.type || 'application/octet-stream',
+    size: file.size,
+    kind,
+  })
+  const { id } = await uploadResumable(uploadUrl, file, { onProgress })
+  return id
+}
+
 const errorText = (e: unknown) =>
   e instanceof ApiError || e instanceof UploadError ? e.code : e instanceof Error ? e.message : String(e)
 
+function loginMessage(e: unknown): string {
+  if (e instanceof ApiError) {
+    if (e.code === 'BAD_CODE') return 'Codice non valido. Riapri il link dal QR.'
+    if (e.code === 'BAD_NAME') return 'Scrivi il tuo nome.'
+    return 'Qualcosa è andato storto. Riprova tra poco.'
+  }
+  return 'Connessione assente. Controlla la rete e riprova.'
+}
+
 export default function App() {
+  const [welcomed, setWelcomed] = useState(false)
   const [code, setCode] = useState(initialCode)
   const [showCode, setShowCode] = useState(() => !initialCode())
   const [name, setName] = useState('')
   const [session, setSession] = useState<Session | null>(null)
   const [loginError, setLoginError] = useState('')
+  const [loggingIn, setLoggingIn] = useState(false)
   const [items, setItems] = useState<Item[]>([])
 
   const busy = items.some(i => i.status === 'in coda' || i.status === 'caricamento')
@@ -40,14 +75,17 @@ export default function App() {
 
   async function login() {
     setLoginError('')
+    setLoggingIn(true)
+    const trimmed = code.trim()
     try {
-      const data = await callApi<{ name: string; folderId: string }>('login', { code, name })
-      rememberCode(code)
-      setSession({ code, name: data.name })
+      const data = await callApi<{ name: string; folderId: string }>('login', { code: trimmed, name: name.trim() })
+      rememberCode(trimmed)
+      setSession({ code: trimmed, name: data.name })
     } catch (e) {
-      const text = errorText(e)
-      if (text === 'BAD_CODE') setShowCode(true)
-      setLoginError(text)
+      if (e instanceof ApiError && e.code === 'BAD_CODE') setShowCode(true)
+      setLoginError(loginMessage(e))
+    } finally {
+      setLoggingIn(false)
     }
   }
 
@@ -58,16 +96,7 @@ export default function App() {
     for (const item of added) {
       update(item.key, { status: 'caricamento' })
       try {
-        const { uploadUrl } = await callApi<{ uploadUrl: string }>('startUpload', {
-          code: session.code,
-          name: session.name,
-          fileName: item.file.name,
-          mimeType: item.file.type || 'application/octet-stream',
-          size: item.file.size,
-        })
-        const { id } = await uploadResumable(uploadUrl, item.file, {
-          onProgress: sent => update(item.key, { sent }),
-        })
+        const id = await sendFile(session, item.file, item.file.name, 'media', sent => update(item.key, { sent }))
         update(item.key, { status: 'fatto', id })
       } catch (e) {
         update(item.key, { status: 'errore', error: errorText(e) })
@@ -75,15 +104,31 @@ export default function App() {
     }
   }
 
+  if (!welcomed) return <Welcome onContinue={() => setWelcomed(true)} />
+
   if (!session) {
     return (
-      <main>
-        <h1>PhotoLaurea</h1>
-        {showCode && <p><input placeholder="Codice evento" value={code} onChange={e => setCode(e.target.value)} /></p>}
-        <p><input placeholder="Il tuo nome" value={name} onChange={e => setName(e.target.value)} /></p>
-        <button onClick={login}>Entra</button>
-        {loginError && <p>Errore: {loginError}</p>}
-      </main>
+      <NameStep
+        name={name}
+        onNameChange={setName}
+        code={code}
+        onCodeChange={setCode}
+        showCode={showCode}
+        error={loginError}
+        busy={loggingIn}
+        onSubmit={login}
+      />
+    )
+  }
+
+  if (!session.avatarId) {
+    return (
+      <ProfileStep
+        onUpload={async photo => {
+          const avatarId = await sendFile(session, photo, 'profilo.jpg', 'avatar')
+          setSession({ ...session, avatarId })
+        }}
+      />
     )
   }
 
