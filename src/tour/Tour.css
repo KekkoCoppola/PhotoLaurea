@@ -1,0 +1,251 @@
+.tour {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+}
+
+/* Strong blur instead of darkening; a sharp hole over the highlighted button (mask) */
+.tour__blur {
+  position: absolute;
+  inset: 0;
+  background: rgb(245 245 247 / 0.5);
+  backdrop-filter: blur(28px) saturate(1.1);
+  -webkit-backdrop-filter: blur(28px) saturate(1.1);
+  mask-size: 100% 100%;
+  -webkit-mask-size: 100% 100%;
+  mask-repeat: no-repeat;
+  -webkit-mask-repeat: no-repeat;
+  animation: tour-fade 220ms ease-out both;
+}
+
+.tour__ring {
+  position: fixed;
+  border-radius: 26px;
+  box-shadow: 0 0 0 3px #fff, 0 0 0 7px rgb(29 29 31 / 0.18), 0 12px 30px -8px rgb(0 0 0 / 0.35);
+  pointer-events: none;
+  transition: left 260ms ease, top 260ms ease, width 260ms ease, height 260ms ease;
+}
+
+/* ---------- text box ---------- */
+.tour__box {
+  position: fixed;
+  box-sizing: border-box;
+  width: min(340px, calc(100vw - 32px));
+  padding: 20px 20px 18px;
+  border-radius: 26px;
+  background: #fff;
+  box-shadow: 0 24px 60px -20px rgb(0 0 0 / 0.4), 0 2px 8px rgb(0 0 0 / 0.06);
+  animation: tour-in 200ms ease-out both;
+}
+
+.tour__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tour__head h2 {
+  margin: 0;
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.tour__close {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  margin: -6px -8px 0 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.tour__text {
+  margin: 8px 0 0;
+  font-size: 17px;
+  line-height: 1.45;
+  color: #3a3a3c;
+}
+
+.tour__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 18px;
+}
+
+.tour__count {
+  font-size: 15px;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.tour__nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tour__back {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: #fff;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.tour__back:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.tour__next {
+  min-width: 96px;
+  height: 44px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 22px;
+  background: var(--ink);
+  color: #fff;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tour__close:focus-visible,
+.tour__back:focus-visible,
+.tour__next:focus-visible {
+  outline: 3px solid rgb(29 29 31 / 0.35);
+  outline-offset: 2px;
+}
+
+/* ---------- examples drawn on top of the blur ---------- */
+.tour__demo {
+  position: fixed;
+  left: 50%;
+  top: max(96px, 12dvh);
+  box-sizing: border-box;
+  width: min(100vw, 480px);
+  padding: 0 16px;
+  transform: translateX(-50%);
+  pointer-events: none;
+  animation: tour-demo-in 260ms ease-out both;
+}
+
+.tour__demo--others {
+  top: max(40px, 5dvh);
+}
+
+.tour__mock-user {
+  cursor: default;
+  animation: none;
+}
+
+.tour__dim {
+  opacity: 0.3;
+  margin-bottom: 26px;
+}
+
+.tour__mock-focus {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.tour__mock-card {
+  width: min(62vw, 250px);
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  border-radius: 28px;
+  box-shadow: 0 30px 60px -24px rgb(0 0 0 / 0.45);
+}
+
+.tour__mock-card img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.tour__mock-actions {
+  display: flex;
+  gap: 28px;
+  margin-top: 14px;
+}
+
+.tour__mock-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.tour__mock-btn.is-muted {
+  color: var(--ink-muted);
+}
+
+.tour__mock-btn.is-danger {
+  color: var(--danger);
+}
+
+.tour__mock-menu {
+  display: flex;
+  flex-direction: column;
+  min-width: 200px;
+  margin: 6px 0 0 -90px;
+  padding: 6px;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 18px 40px -14px rgb(0 0 0 / 0.35), 0 1px 3px rgb(0 0 0 / 0.08);
+}
+
+.tour__mock-menu span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 10px;
+  font-size: 15px;
+  color: var(--ink);
+}
+
+.tour__mock-menu span:first-child {
+  background: #f2f2f4;
+}
+
+@keyframes tour-fade {
+  from { opacity: 0; }
+}
+@keyframes tour-in {
+  from { opacity: 0; transform: translateY(6px); }
+}
+/* keeps the centring transform while fading in */
+@keyframes tour-demo-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(6px); }
+  to { opacity: 1; transform: translateX(-50%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tour__blur,
+  .tour__box,
+  .tour__demo {
+    animation: none;
+  }
+  .tour__ring {
+    transition: none;
+  }
+}
